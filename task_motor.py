@@ -1,8 +1,8 @@
 ''' This file demonstrates an example motor task using a custom class with a
     run method implemented as a generator
 '''
-from motor        import Motor
-from encoder      import Encoder
+from drivers.motor import Motor
+from drivers.encoder import Encoder
 from task_share   import Share, Queue
 from utime        import ticks_us, ticks_diff
 import micropython

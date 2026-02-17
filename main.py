@@ -14,8 +14,8 @@ that coordinates motor control and user interface tasks.
 from pyb import Timer
 
 # Motor and sensor control
-from motor import Motor
-from encoder import Encoder
+from drivers.motor import Motor
+from drivers.encoder import Encoder
 
 # Configuration constants
 from constants import *

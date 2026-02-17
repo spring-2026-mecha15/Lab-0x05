@@ -46,8 +46,8 @@ CSV_END = '>>>>CSV END<<<<'
 
 # # Typical main.py setup:
 # from pyb import Timer
-# from motor import Motor
-# from encoder import Encoder
+# from drivers.motor import Motor
+# from drivers.encoder import Encoder
 # from constants import *
 
 # tim1 = Timer(1) # For R encoder
