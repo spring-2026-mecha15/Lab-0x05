@@ -16,6 +16,7 @@ from pyb import Timer
 # Motor and sensor control
 from drivers.motor import Motor
 from drivers.encoder import Encoder
+from drivers.reflectance import Reflectance_Sensor
 
 # Configuration constants
 from constants import *
@@ -30,6 +31,7 @@ from cotask import Task, task_list
 
 # Memory management
 from gc import collect
+
 
 
 # ============================================================================
@@ -48,6 +50,10 @@ leftMotor = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR)
 # Initialize encoder feedback objects
 rightEncoder = Encoder(tim1, ENCODER_R_A, ENCODER_R_B)
 leftEncoder = Encoder(tim2, ENCODER_L_A, ENCODER_L_B)
+
+reflectanceSensor = Reflectance_Sensor(QTRX_A_1,QTRX_A_3,QTRX_A_5,QTRX_A_7,
+                                       QTRX_A_9,QTRX_A_11,QTRX_A_13)
+
 
 
 # ============================================================================
@@ -90,7 +96,7 @@ rightMotorTask = task_motor(
 userTask = task_user(
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues)
+    dataValues, timeValues, reflectanceSensor)
 
 
 # ============================================================================

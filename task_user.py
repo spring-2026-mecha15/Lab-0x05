@@ -14,6 +14,7 @@ from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
 from constants import CSV_BEGIN, CSV_END
+from drivers.reflectance import Reflectance_Sensor
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_INIT = micropython.const(0)          # Initial state: print prompt
@@ -23,6 +24,8 @@ S3_GAINS = micropython.const(3)         # Read new Kp / Ki values
 S4_SETPOINT = micropython.const(4)      # Read new setpoint
 S5_COLLECT = micropython.const(5)       # Wait for data collection to finish
 S6_DISPLAY_DATA = micropython.const(6)  # Print collected CSV data
+S7_DEBUG = micropython.const(7)         # For Misc Debugging
+S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
 
 # Reusable UI text
 UI_prompt = """\r\n\n
@@ -33,6 +36,8 @@ UI_prompt = """\r\n\n
 | k | Enter new gain values                                             |\r
 | s | Choose a new setpoint                                             |\r
 | g | Trigger step response and print results                           |\r
+| c | Line Sensor Calibration.                                          |\r
+| i | Misc Debug                                                        |\r
 +---+-------------------------------------------------------------------+\r
 \r
 >: """
@@ -58,6 +63,7 @@ class task_user:
         rightMotorSetPoint,    # type: Share
         dataValues,            # type: Queue
         timeValues,            # type: Queue
+        reflectanceSensor,     # type: Reflectance_Sensor
     ):
         """
         Initialize the UI task.
@@ -91,6 +97,7 @@ class task_user:
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
         self._timeValues = timeValues               # type: Queue
+        self._reflectanceSensor = reflectanceSensor # type: Reflectance_Sensor
 
         # Notify user task instantiation (kept from original behavior)
         self._ser.write("User Task object instantiated")
@@ -141,6 +148,16 @@ class task_user:
                         # Enable the right motor test (preserved behavior)
                         self._rightMotorGo.put(1)
                         self._state = S5_COLLECT
+
+                    # Line Sensor Calibration
+                    elif inChar in {"c", "C"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S8_CALIBRATION
+
+                    # Debug
+                    elif inChar in {"i", "I"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S7_DEBUG
 
             # -----------------------
             # S2_HELP: display help, wait for Enter
@@ -258,6 +275,64 @@ class task_user:
                     self._ser.write(f"{CSV_END}\r\n")
                     self._ser.write(UI_prompt)
                     self._state = S1_CMD
+
+
+            # -----------------------
+            # S7_DEBUG: debug state
+            # -----------------------
+            elif self._state == S7_DEBUG:
+                self._ser.write("DEBUG\r\n")
+
+                
+                values = self._reflectanceSensor.get_values()
+                self._ser.write("{}\r\n".format(values))
+
+                # Return to main prompt
+                self._ser.write(UI_prompt)
+                self._state = S1_CMD
+
+            # -----------------------
+            # S8_CALIBRATE: calibraiton state
+            # -----------------------
+            elif self._state == S8_CALIBRATION:
+                self._ser.write("CALIBRATION\r\n")
+                self._ser.write("Would you like to begin calibration (y/n?\r\n")
+
+
+                self._ser.write("Please Place Roami On a Light Surface Press Enter When Complete\r\n")
+
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"\r", "\n"}:
+                            # Clear any remaining input then exit help
+                            while self._ser.any():
+                                self._ser.read(None)
+                            break
+                    yield
+
+                self._reflectanceSensor.calibrate("light")
+
+                self._ser.write("Please Place Roami On a Dark Surface Press Enter When Complete\r\n")
+
+                # Wait for newline or carriage return, non-blocking (yielding)
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"\r", "\n"}:
+                            # Clear any remaining input then exit help
+                            while self._ser.any():
+                                self._ser.read(None)
+                            break
+                    yield
+
+                self._reflectanceSensor.calibrate("dark")
+
+
+
+                # Return to main prompt
+                self._ser.write(UI_prompt)
+                self._state = S1_CMD
 
             # Yield the current state per scheduler convention
             yield self._state
