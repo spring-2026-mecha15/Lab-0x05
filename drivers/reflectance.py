@@ -3,6 +3,8 @@ from pyb import Pin, ADC
 import json
 import utime
 
+"!!!!!!Load calibration into memory, make non blocking if needed!!!!!!"
+
 
 class Reflectance_Sensor:
     """
@@ -34,6 +36,7 @@ class Reflectance_Sensor:
 
     def get_values(self):
 
+        #Probably need to load calibration values into memeory instead of reading from json each time (slows down alot)
         # Load calibration
         with open("ir_calibration.json", "r") as f:
             calibration = json.load(f)
@@ -76,6 +79,9 @@ class Reflectance_Sensor:
 
 
     def calibrate(self, mode):  # "light" or "dark"
+
+        #Might need to make this non blocking (wanted to test fucntionality first though)
+        
         try:
             with open("ir_calibration.json", "r") as f:
                 calibration = json.load(f)

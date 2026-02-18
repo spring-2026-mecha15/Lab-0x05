@@ -19,7 +19,7 @@ try:
     IMU_SCL = Pin.cpu.B14
     IMU_SDA = Pin.cpu.B13
 
-    QTRX_A_1 = Pin.cpu.C4
+    QTRX_A_1 = Pin.cpu.A5
     QTRX_A_3 = Pin.cpu.C2
     QTRX_A_5 = Pin.cpu.C3
     QTRX_A_7 = Pin.cpu.A4
