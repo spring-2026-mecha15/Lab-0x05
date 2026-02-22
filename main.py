@@ -24,6 +24,8 @@ from constants import *
 # Task implementations
 from task_motor import task_motor
 from task_user import task_user
+from task_line_follow import task_line_follow
+from task_reflectance import task_reflectance
 
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
@@ -83,6 +85,18 @@ rightMotorKi       = Share("f", name="Right Mot. Ki Gain")
 dataValues = Queue("f", 50, name="Data Collection Buffer")
 timeValues = Queue("L", 50, name="Time Buffer")
 
+# Line following sensor shares
+lineCentroid        = Share("f", name="Line Centroid Val")
+lineFound          = Share("B", name="Line Found Flag") # For future use
+lineFollowGo       = Share("B", name="Line Follow Go Flag")
+
+# Reflectance sensor array shares
+#  Mode:
+#   - 0: Idle
+#   - 1: Calibration Mode
+#   - 2: Running
+reflectanceMode      = Share("B", name="Reflectance Sensor Go Flag")
+
 
 # ============================================================================
 # TASK INSTANTIATION
@@ -103,7 +117,25 @@ rightMotorTask = task_motor(
 userTask = task_user(
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues, reflectanceSensor)
+    dataValues, timeValues,
+    reflectanceMode, lineFollowGo, lineCentroid
+    )
+
+# Create a line follower control instance
+lineFollowTask = task_line_follow(
+    lineFollowGo,
+    lineCentroid,
+    rightMotorSetPoint,
+    leftMotorSetPoint
+)
+
+# Create a reflectance sensor array instance
+reflectanceTask = task_reflectance(
+    reflectanceSensor,
+    reflectanceMode,
+    lineCentroid,
+    lineFound
+)
 
 
 # ============================================================================
@@ -119,6 +151,10 @@ task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
                       priority=1, period=50, profile=True))
 task_list.append(Task(userTask.run, name="User Int. Task",
                       priority=0, period=0, profile=False))
+task_list.append(Task(reflectanceTask.run, name="Reflectance Sensor Task",
+                      priority=4, period=20, profile=True))
+task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
+                      priority=5, period=20, profile=True))
 
 # Perform garbage collection before starting main loop
 collect()
