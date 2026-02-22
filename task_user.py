@@ -283,9 +283,9 @@ class task_user:
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
-                
-                values = self._reflectanceSensor.get_values()
-                self._ser.write("{}\r\n".format(values))
+                # values = self._reflectanceSensor.get_values()
+                # self._ser.write("{}\r\n".format(values))
+                self._reflectanceSensor.load_calibration_from_file('ir_calibration.json')
 
                 # Return to main prompt
                 self._ser.write(UI_prompt)
@@ -296,10 +296,22 @@ class task_user:
             # -----------------------
             elif self._state == S8_CALIBRATION:
                 self._ser.write("CALIBRATION\r\n")
-                self._ser.write("Would you like to begin calibration (y/n?\r\n")
+                self._ser.write("Would you like to begin calibration (y/n)?\r\n")
+
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"y", "Y", "n", "N"}:
+                            break
+
+                if inChar in {"n", "N"}:
+                    self._ser.write(UI_prompt)
+                    self._state = S1_CMD
+                    yield
+                    continue
 
 
-                self._ser.write("Please Place Roami On a Light Surface Press Enter When Complete\r\n")
+                self._ser.write("Please Place Romi On a Light Surface. Press Enter When Complete\r\n")
 
                 while True:
                     if self._ser.any():
@@ -311,9 +323,9 @@ class task_user:
                             break
                     yield
 
-                self._reflectanceSensor.calibrate("light")
+                yield from self._reflectanceSensor.calibrate("light")
 
-                self._ser.write("Please Place Roami On a Dark Surface Press Enter When Complete\r\n")
+                self._ser.write("Please Place Romi On a Dark Surface. Press Enter When Complete\r\n")
 
                 # Wait for newline or carriage return, non-blocking (yielding)
                 while True:
@@ -326,7 +338,7 @@ class task_user:
                             break
                     yield
 
-                self._reflectanceSensor.calibrate("dark")
+                yield from self._reflectanceSensor.calibrate("dark")
 
 
 

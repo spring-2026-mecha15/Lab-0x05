@@ -19,13 +19,13 @@ try:
     IMU_SCL = Pin.cpu.B14
     IMU_SDA = Pin.cpu.B13
 
-    QTRX_A_1 = Pin.cpu.A5
-    QTRX_A_3 = Pin.cpu.C2
-    QTRX_A_5 = Pin.cpu.C3
-    QTRX_A_7 = Pin.cpu.A4
-    QTRX_A_9 = Pin.cpu.B0
-    QTRX_A_11 = Pin.cpu.C1
-    QTRX_A_13 = Pin.cpu.C0
+    QTRX_A1 = Pin.cpu.A5
+    QTRX_A3 = Pin.cpu.C2
+    QTRX_A5 = Pin.cpu.C3
+    QTRX_A7 = Pin.cpu.A4
+    QTRX_A9 = Pin.cpu.B0
+    QTRX_A11 = Pin.cpu.C1
+    QTRX_A13 = Pin.cpu.C0
 
 except ImportError:
     print('Info: skipping pin definitions on non-STM32 device')

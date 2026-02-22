@@ -51,8 +51,15 @@ leftMotor = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR)
 rightEncoder = Encoder(tim1, ENCODER_R_A, ENCODER_R_B)
 leftEncoder = Encoder(tim2, ENCODER_L_A, ENCODER_L_B)
 
-reflectanceSensor = Reflectance_Sensor(QTRX_A_1,QTRX_A_3,QTRX_A_5,QTRX_A_7,
-                                       QTRX_A_9,QTRX_A_11,QTRX_A_13)
+reflectanceSensor = Reflectance_Sensor([
+    QTRX_A1,
+    QTRX_A3,
+    QTRX_A5,
+    QTRX_A7,
+    QTRX_A9,
+    QTRX_A11,
+    QTRX_A13
+    ])
 
 
 
