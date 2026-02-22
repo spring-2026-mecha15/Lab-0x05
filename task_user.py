@@ -9,7 +9,7 @@ updates Shares/Queues to coordinate with motor tasks.
 Lightweight, comment-style type hints are included for clarity
 and static-readability but are safe for MicroPython (they are comments).
 """
-from pyb import USB_VCP
+from pyb import USB_VCP, UART
 from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
@@ -94,6 +94,8 @@ class task_user:
 
         # Serial interface (USB virtual COM port)
         self._ser = USB_VCP()                       # type: USB_VCP
+        # Serial interface (UART over bluetooth HC-05)
+        # self._ser = UART(3, 115200)
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
