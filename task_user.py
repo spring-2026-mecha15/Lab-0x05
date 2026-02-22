@@ -14,7 +14,6 @@ from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
 from constants import CSV_BEGIN, CSV_END
-from drivers.reflectance import Reflectance_Sensor
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_INIT = micropython.const(0)          # Initial state: print prompt
@@ -63,7 +62,9 @@ class task_user:
         rightMotorSetPoint,    # type: Share
         dataValues,            # type: Queue
         timeValues,            # type: Queue
-        reflectanceSensor,     # type: Reflectance_Sensor
+        reflectanceMode,       # type: Share
+        lineFollowGo,          # type: Share
+        lineCentroid           # type: Share
     ):
         """
         Initialize the UI task.
@@ -97,10 +98,14 @@ class task_user:
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
         self._timeValues = timeValues               # type: Queue
-        self._reflectanceSensor = reflectanceSensor # type: Reflectance_Sensor
+
+        # Shares for reflectance sensor
+        self._reflectanceMode = reflectanceMode     # type: Share
+        self._lineFollowGo = lineFollowGo           # type: Share
+        self._lineCentroid = lineCentroid           # type: Share
 
         # Notify user task instantiation (kept from original behavior)
-        self._ser.write("User Task object instantiated")
+        self._ser.write("User Task object instantiated\r\n")
 
     def run(self):
         """
@@ -283,9 +288,24 @@ class task_user:
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
-                # values = self._reflectanceSensor.get_values()
-                # self._ser.write("{}\r\n".format(values))
-                self._reflectanceSensor.load_calibration_from_file('ir_calibration.json')
+                # LINE SENSOR CENTROID VISUALIZATION
+                """
+                raw, calibrated, value = self._reflectanceSensor.get_values()
+                self._ser.write(f" RAW   CALIBRATED  \r\n")
+                for i in range(len(raw)):
+                    self._ser.write(f"{raw[i]}")
+                    self._ser.write('   ')
+                    for _ in range(int(calibrated[i]*10)):
+                        self._ser.write('+')
+                    self._ser.write("\r\n")
+
+                self._ser.write(f"Measured value: {value:.2f}\r\n")
+                """
+
+                # LINE FOLLOW OUTER PID TEST
+                self._lineFollowGo.put(
+                    not(self._lineFollowGo.get())
+                )
 
                 # Return to main prompt
                 self._ser.write(UI_prompt)
@@ -311,7 +331,7 @@ class task_user:
                     continue
 
 
-                self._ser.write("Please Place Romi On a Light Surface. Press Enter When Complete\r\n")
+                self._ser.write("Place Romi on a light surface. Press Enter when ready\r\n")
 
                 while True:
                     if self._ser.any():
@@ -321,9 +341,14 @@ class task_user:
                             while self._ser.any():
                                 self._ser.read(None)
                             break
-                    yield
+                    yield 0
 
-                yield from self._reflectanceSensor.calibrate("light")
+                # Request that reflectance sensor goes into dark calib. mode
+                self._reflectanceMode.put(2)
+
+                # Wait for 'ack' that calibration is done
+                while self._reflectanceMode.get() != 0:
+                    yield 0
 
                 self._ser.write("Please Place Romi On a Dark Surface. Press Enter When Complete\r\n")
 
@@ -338,9 +363,14 @@ class task_user:
                             break
                     yield
 
-                yield from self._reflectanceSensor.calibrate("dark")
+                # Request that reflectance sensor goes into light calib. mode
+                self._reflectanceMode.put(1)
 
+                # Wait for 'ack' that calibration is done
+                while self._reflectanceMode.get() != 0:
+                    yield 0
 
+                self._ser.write('Sensor calibration complete.\r\n')
 
                 # Return to main prompt
                 self._ser.write(UI_prompt)

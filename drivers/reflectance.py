@@ -16,8 +16,14 @@ class Reflectance_Sensor:
     """
 
     _CALIBRATION_FILE = "ir_calibration.json"
-    _SAMPLE_COUNT = 200
-    _SAMPLE_PERIOD_MS = 30
+    _SAMPLE_COUNT = 20
+    _SAMPLE_PERIOD_MS = 10
+    _READ_SAMPLES = 5  # Number of raw reads to average in get_values()
+    
+    # Threshold-based line loss detection (sum of calibrated values)
+    _LINE_DETECT_THRESHOLD_LOW = 0.5   # Below this = all black (line lost)
+    _LINE_DETECT_THRESHOLD_HIGH = 6.85  # Above this = all white (line lost)
+    # For 7 sensors: valid range roughly 0.15 to 6.85 (ensures some contrast)
 
     def __init__(self, analogPins: list[Pin]):
         """Create ADC objects for each analog reflectance sensor pin."""
@@ -28,6 +34,9 @@ class Reflectance_Sensor:
 
         # In-memory [dark, light] pairs loaded from file when requested.
         self._calibration: list[list[float]] = []
+        
+        # Track last valid centroid for line loss recovery
+        self._last_valid_centroid = 0.0
 
     def _read_raw(self) -> list[int]:
         """Read all sensors once and return raw ADC values."""
@@ -53,13 +62,25 @@ class Reflectance_Sensor:
         return value
 
     def get_values(self):
-        """Return `(raw, calibrated, C)` where `C` is weighted line position."""
+        """Return `(raw, calibrated, C, line_detected)` where:
+        - `raw`: list of averaged raw ADC values
+        - `calibrated`: list of normalized sensor values (0=white, 1=black)
+        - `C`: weighted line position (centroid)
+        - `line_detected`: True if line is detected, False if lost (noise/uniform)
+        
+        Raw values are averaged over `_READ_SAMPLES` reads to reduce noise.
+        When line is lost, `C` returns the last valid centroid.
+        """
 
         # Read calibration from JSON file.
         calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
-        # Read raw sensors once
-        raw = self._read_raw()
+        # Average multiple raw reads to reduce noise
+        raw_samples = [self._read_raw() for _ in range(self._READ_SAMPLES)]
+        raw = [
+            sum(sample[i] for sample in raw_samples) // self._READ_SAMPLES
+            for i in range(self._numSensors)
+        ]
 
         # List to store sensor readings with calibration applied
         calibrated = []
@@ -82,13 +103,24 @@ class Reflectance_Sensor:
         weights = list(range((-self._numSensors // 2) + 1, (self._numSensors // 2) + 1))
         total = sum(calibrated)
 
-        # Compute weighted sensor values
-        if total != 0:
-            C = sum(w * v for w, v in zip(weights, calibrated)) / total
-        else:
-            C = 0
+        # Threshold-based line loss detection
+        line_detected = (self._LINE_DETECT_THRESHOLD_LOW <= total <= self._LINE_DETECT_THRESHOLD_HIGH)
 
-        return raw, calibrated, C
+        # print('Line found' if line_detected else 'Line not found', f'({total})')
+
+        # Compute weighted sensor values
+        if total != 0 and line_detected:
+            centroid = sum(w * v for w, v in zip(weights, calibrated)) / total
+            self._last_valid_centroid = centroid  # Store for line loss recovery
+        else:
+            # Line lost: return last valid centroid
+            centroid = self._last_valid_centroid
+
+        # return raw, calibrated, C, line_detected
+        return raw, calibrated, centroid
+
+    def get_centroid(self):
+        return self.get_values()[2]
 
     def load_calibration_from_file(self, filename: str):
         """Load calibration file into `self._calibration` as `[dark, light]` pairs."""
@@ -101,6 +133,9 @@ class Reflectance_Sensor:
                     cal_pair['dark'],
                     cal_pair['light']
                 ])
+
+
+        print(self._calibration)
 
     def calibrate(self, mode):  # "light" or "dark"
         """
@@ -115,25 +150,19 @@ class Reflectance_Sensor:
         sample_count = self._SAMPLE_COUNT
         samples = [] 
 
-        print()
-
         for i in range(sample_count):
             readings = self._read_raw()
             samples.append(readings)  # collect one sample set
 
-            # Carriage return updates a single on-screen progress line.
-            print(f'\r{i}', end='')
-            
             # Calculate the ticks in ms before continuing to sample
             deadline_ms = utime.ticks_add(utime.ticks_ms(), self._SAMPLE_PERIOD_MS)
-
+            
             while utime.ticks_diff(deadline_ms, utime.ticks_ms()) > 0:
-                yield
+                yield i
 
         for i in range(self._numSensors):
             avg = sum(sample[i] for sample in samples) / sample_count
             calibration[i][mode] = avg
-            yield
 
         with open(self._CALIBRATION_FILE, "w") as f:
             json.dump(calibration, f)
