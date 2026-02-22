@@ -302,7 +302,24 @@ class task_user:
                 self._ser.write(f"Measured value: {value:.2f}\r\n")
                 """
 
-                # LINE FOLLOW OUTER PID TEST
+
+                # Set sensor array into RUN mode
+                self._reflectanceMode.put(3)
+
+                # Configure motor control params
+                self._leftMotorKi.put(0.6)
+                self._rightMotorKi.put(0.6)
+
+                self._leftMotorKp.put(0.02)
+                self._rightMotorKp.put(0.02)
+
+                self._leftMotorSetPoint.put(0)
+                self._rightMotorSetPoint.put(0)
+
+                self._leftMotorGo.put(1)
+                self._rightMotorGo.put(1)
+
+                # Enable line following controller
                 self._lineFollowGo.put(
                     not(self._lineFollowGo.get())
                 )

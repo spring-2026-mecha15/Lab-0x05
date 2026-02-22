@@ -20,7 +20,7 @@ class task_reflectance:
 
         self._sensor = reflectanceSensor
 
-        self._reflectanceMode = reflectanceMode
+        self._mode = reflectanceMode
 
         self._lineCentroid = lineCentroid
 
@@ -31,7 +31,7 @@ class task_reflectance:
     def run(self):
         while True:
             if self._state == S0_IDLE:
-                mode = self._reflectanceMode.get()
+                mode = self._mode.get()
 
                 if mode == 0:
                     pass
@@ -39,6 +39,8 @@ class task_reflectance:
                     self._state = S1_CALIB_DARK
                 elif mode == 2:
                     self._state = S2_CALIB_LIGHT
+                elif mode == 3:
+                    self._state = S3_RUN
                 
                 else:
                     raise ValueError(f"Invalid mode: {mode}")
@@ -49,14 +51,15 @@ class task_reflectance:
                 cal_gen = self._sensor.calibrate("dark")
                 while True:
                     try:
-                        print(next(cal_gen))
+                        # print(next(cal_gen))
+                        next(cal_gen)
                         yield 0
 
                     # When calibration is done, reset states
                     except StopIteration:
                         break
                     
-                self._reflectanceMode.put(0)
+                self._mode.put(0)
                 self._state = S0_IDLE
 
 
@@ -65,21 +68,21 @@ class task_reflectance:
                 cal_gen = self._sensor.calibrate("light")
                 while True:
                     try:
-                        print(next(cal_gen))
-                        # print(f'\r{samplenum}', end='')
+                        # print(next(cal_gen))
+                        next(cal_gen)
                         yield 0
 
                     # When calibration is done, reset states
                     except StopIteration:
                         break
 
-                self._reflectanceMode.put(0)
+                self._mode.put(0)
                 self._state = S0_IDLE
 
 
             elif self._state == S3_RUN:
                 # Check if we are done running first
-                if self._reflectanceMode.get() == 0:
+                if self._mode.get() == 0:
                     self._state = S0_IDLE
 
                 # If running, put the latest centroid in the share
