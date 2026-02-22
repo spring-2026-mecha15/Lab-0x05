@@ -31,12 +31,12 @@ class Reflectance_Sensor:
 
         # Number of sensors configured
         self._numSensors = len(self._sensors)
-
-        # In-memory [dark, light] pairs loaded from file when requested.
-        self._calibration: list[list[float]] = []
         
         # Track last valid centroid for line loss recovery
         self._last_valid_centroid = 0.0
+
+        # Load calibration from file into memory (cached for fast access)
+        self._calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
     def _read_raw(self) -> list[int]:
         """Read all sensors once and return raw ADC values."""
@@ -72,8 +72,8 @@ class Reflectance_Sensor:
         When line is lost, `C` returns the last valid centroid.
         """
 
-        # Read calibration from JSON file.
-        calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
+        # Use cached calibration from memory (loaded during __init__)
+        calibration = self._calibration
 
         # Average multiple raw reads to reduce noise
         raw_samples = [self._read_raw() for _ in range(self._READ_SAMPLES)]
@@ -144,6 +144,8 @@ class Reflectance_Sensor:
         `mode` should be `"light"` or `"dark"`. The routine collects
         `_SAMPLE_COUNT` raw samples and stores the per-sensor average to file.
         It yields frequently so other cotasks can continue running.
+        
+        After calibration completes, the in-memory cache is updated.
         """
         calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
@@ -166,3 +168,6 @@ class Reflectance_Sensor:
 
         with open(self._CALIBRATION_FILE, "w") as f:
             json.dump(calibration, f)
+        
+        # Update the in-memory cache so get_values() uses the new calibration
+        self._calibration = calibration
