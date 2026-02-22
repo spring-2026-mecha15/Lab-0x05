@@ -107,9 +107,17 @@ class task_motor:
                     self._controller.set_point = self._setpoint.get()
                     self._controller.Kp = self._kpVal.get()
                     self._controller.Ki = self._kiVal.get()
+
                 
             elif self._state == S2_RUN: # Closed-loop control state
                 # print(f"Running motor loop, cycle {self._dataValues.num_in()}")
+
+                # Check if we need to exit motor control
+                if not(self._goFlag.get()):
+                    self._state = S1_WAIT
+                    self._mot.disable()
+
+                self._controller.set_point = self._setpoint.get()
                 
                 # Run the encoder update algorithm and then capture the present
                 # position of the encoder. You will eventually need to capture
@@ -128,6 +136,7 @@ class task_motor:
                 # Update encoder before measuring velocity
                 self._enc.update()
                 self._controller.run()
+                """
                 # pos = self._enc.get_position()
                 vel = self._enc.get_velocity()
 
@@ -144,6 +153,7 @@ class task_motor:
                     self._state = S1_WAIT
                     self._goFlag.put(False)
                     self._mot.disable()
+                """
 
 
             
