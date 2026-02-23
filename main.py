@@ -10,29 +10,39 @@ that coordinates motor control and user interface tasks.
 # IMPORTS
 # ============================================================================
 
+import gc
+
 # Hardware drivers and timing
 from pyb import Timer
+gc.collect()
 
 # Motor and sensor control
 from drivers.motor import Motor
+gc.collect()
 from drivers.encoder import Encoder
+gc.collect()
 from drivers.reflectance import Reflectance_Sensor
+gc.collect()
 
 # Configuration constants
 from constants import *
+gc.collect()
 
 # Task implementations
 from task_motor import task_motor
+gc.collect()
 from task_user import task_user
+gc.collect()
 from task_line_follow import task_line_follow
+gc.collect()
 from task_reflectance import task_reflectance
+gc.collect()
 
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
+gc.collect()
 from cotask import Task, task_list
-
-# Memory management
-from gc import collect
+gc.collect()
 
 
 
@@ -156,9 +166,7 @@ task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=10, profile=True))
 
-# Perform garbage collection before starting main loop
-collect()
-
+gc.collect()
 
 # ============================================================================
 # MAIN SCHEDULING LOOP

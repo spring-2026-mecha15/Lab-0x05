@@ -300,44 +300,6 @@ class task_user:
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
-                # LINE SENSOR CENTROID VISUALIZATION
-                """
-                raw, calibrated, value = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
-
-                self._ser.write(f"Measured value: {value:.2f}\r\n")
-                """
-
-                # LINE FOLLOWING INITAL DEBUGGING
-                #"""
-                # Set sensor array into RUN mode
-                self._reflectanceMode.put(3)
-
-                # Configure motor control params
-                self._leftMotorKi.put(0.6)
-                self._rightMotorKi.put(0.6)
-
-                self._leftMotorKp.put(0.02)
-                self._rightMotorKp.put(0.02)
-
-                self._leftMotorSetPoint.put(0)
-                self._rightMotorSetPoint.put(0)
-
-                self._leftMotorGo.put(1)
-                self._rightMotorGo.put(1)
-
-                # Toggle line following controller
-                self._lineFollowGo.put(
-                    not(self._lineFollowGo.get())
-                )
-                #"""
-
                 # Return to main prompt
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
@@ -432,8 +394,10 @@ class task_user:
 
                 self._ser.write(f"Measured value: {value:.2f}\r\n")
                 """
-
-
+                """
+                self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
+                value = yield from multichar_input(self._ser)
+                """
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
 
@@ -451,10 +415,7 @@ class task_user:
                 self._rightMotorGo.put(1)
 
                 # Enable line following controller
-                self._lineFollowGo.put(
-                    not(self._lineFollowGo.get())
-                )
-
+                self._lineFollowGo.put(1)
 
                 self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
 
@@ -468,6 +429,14 @@ class task_user:
                                 self._ser.read(None)
                             break
                     yield
+
+                # Stop line-following mode and related tasks before returning.
+                self._lineFollowGo.put(0)
+                self._reflectanceMode.put(0)
+                self._leftMotorGo.put(0)
+                self._rightMotorGo.put(0)
+                self._leftMotorSetPoint.put(0)
+                self._rightMotorSetPoint.put(0)
 
                 
                 # Return to main prompt
