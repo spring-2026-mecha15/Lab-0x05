@@ -9,11 +9,15 @@ updates Shares/Queues to coordinate with motor tasks.
 Lightweight, comment-style type hints are included for clarity
 and static-readability but are safe for MicroPython (they are comments).
 """
-from pyb import USB_VCP, UART
+from pyb import USB_VCP, UART, ADC, Pin
 from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
-from constants import CSV_BEGIN, CSV_END
+from constants import CSV_BEGIN, CSV_END, GAINS_FILE
+try:
+    import ujson as json
+except ImportError:
+    import json
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_INIT = micropython.const(0)          # Initial state: print prompt
@@ -66,6 +70,8 @@ class task_user:
         timeValues,            # type: Queue
         reflectanceMode,       # type: Share
         lineFollowGo,          # type: Share
+        lineFollowKp,          # type: Share
+        lineFollowKi,          # type: Share
         lineCentroid           # type: Share
     ):
         """
@@ -106,10 +112,35 @@ class task_user:
         # Shares for reflectance sensor
         self._reflectanceMode = reflectanceMode     # type: Share
         self._lineFollowGo = lineFollowGo           # type: Share
+        self._lineFollowKp = lineFollowKp           # type: Share
+        self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
+
+        # Battery adc reading
+        # self._battAdc = ADC(Pin(BATT_ADC))
 
         # Notify user task instantiation (kept from original behavior)
         self._ser.write("User Task object instantiated\r\n")
+
+    def _save_gains(self) -> bool:
+        data = {
+            "motor": {
+                "kp": self._leftMotorKp.get(),
+                "ki": self._leftMotorKi.get(),
+            },
+            "line_follower": {
+                "kp": self._lineFollowKp.get(),
+                "ki": self._lineFollowKi.get(),
+            },
+        }
+
+        try:
+            with open(GAINS_FILE, "w") as gains_file:
+                json.dump(data, gains_file)
+        except OSError:
+            return False
+
+        return True
 
     def run(self):
         """
@@ -197,48 +228,84 @@ class task_user:
                 self._state = S1_CMD
 
             # -----------------------
-            # S3_GAINS: prompt for Kp then Ki (uses multichar_input)
+            # S3_GAINS: prompt for motor and line following Kp and Ki (uses multichar_input)
             # -----------------------
             elif self._state == S3_GAINS:
-                # Prompt and read new Kp
+                # Prompt and read new motor Kp (assumes same gain for L/R)
                 self._ser.write(
-                    f"Current Kp gains: L:{self._leftMotorKp.get():.2f}, R:{self._rightMotorKp.get():.2f}\r\n"
+                    f"Current motor Kp gain: {self._leftMotorKp.get():.2f}\r\n"
                 )
-                self._ser.write("Enter a new Kp gain value: \r\n->: ")
+                self._ser.write("Enter a new motor Kp gain value: \r\n->: ")
                 value = yield from multichar_input(self._ser)
 
                 if value is not None:
                     if value <= 0:
-                        self._ser.write("Invalid Kp gain (<= 0). Kp gain unchanged")
+                        self._ser.write("Invalid motor Kp gain (<= 0). Motor Kp gain unchanged")
                     else:
                         # Apply same Kp to both motors (preserved behavior)
                         self._leftMotorKp.put(value)
                         self._rightMotorKp.put(value)
-                        self._ser.write(f"Kp Gain Set To: {value:.2f}\r\n")
+                        self._ser.write(f"Motor Kp Gain Set To: {value:.2f}\r\n")
                 else:
-                    self._ser.write("No value entered. Kp gains unchanged.\r\n")
+                    self._ser.write("No value entered. Motor Kp gains unchanged.\r\n")
 
-                # Prompt and read new Ki
+                # Prompt and read new motor Ki (assumes same gain for L/R)
                 self._ser.write(
-                    f"\r\nCurrent Ki gains: L:{self._leftMotorKi.get():.2f}, R:{self._rightMotorKi.get():.2f}\r\n"
+                    f"\r\nCurrent motor Ki gains: {self._leftMotorKi.get():.2f}\r\n"
                 )
-                self._ser.write("Enter a new Ki gain value:\r\n->: ")
+                self._ser.write("Enter a new motor Ki gain value:\r\n->: ")
                 value = yield from multichar_input(self._ser)
 
                 if value is not None:
                     if value < 0:
-                        self._ser.write("Invalid Ki gain (< 0). Ki gains unchanged")
+                        self._ser.write("Invalid motor Ki gain (< 0). Motor Ki gains unchanged")
                     else:
                         self._leftMotorKi.put(value)
                         self._rightMotorKi.put(value)
-                        self._ser.write(f"Ki Gain Set To: {value} \r\n")
+                        self._ser.write(f"Motor Ki Gain Set To: {value} \r\n")
                 else:
-                    self._ser.write("No value entered. Ki gains unchanged.\r\n")
+                    self._ser.write("No value entered. Motor Ki gains unchanged.\r\n")
+
+                # Prompt and read new line follower Kp
+                self._ser.write(
+                    f"\r\nCurrent line follower (LF) Kp gain: {self._lineFollowKp.get():.2f}\r\n"
+                )
+                self._ser.write("Enter a new LF Kp gain value:\r\n->: ")
+                value = yield from multichar_input(self._ser)
+
+                if value is not None:
+                    if value < 0:
+                        self._ser.write("Invalid LF Kp gain (< 0). LF Kp gains unchanged")
+                    else:
+                        self._lineFollowKp.put(value)
+                        self._ser.write(f"LF Kp Gain Set To: {value}\r\n")
+                else:
+                    self._ser.write("No value entered. LF Kp gains unchanged.\r\n")
+
+                # Prompt and read new line follower Ki
+                self._ser.write(
+                    f"\r\nCurrent line follower (LF) Ki gain: {self._lineFollowKi.get():.2f}\r\n"
+                )
+                self._ser.write("Enter a new LF Ki gain value:\r\n->: ")
+                value = yield from multichar_input(self._ser)
+
+                if value is not None:
+                    if value < 0:
+                        self._ser.write("Invalid LF Ki gain (< 0). LF Ki gains unchanged")
+                    else:
+                        self._lineFollowKi.put(value)
+                        self._ser.write(f"LF Ki Gain Set To: {value}\r\n")
+                else:
+                    self._ser.write("No value entered. LF Ki gains unchanged.\r\n")
 
                 # Show final values and return to prompt
                 self._ser.write("\r\nController gains:\r\n")
-                self._ser.write(f" - Kp: {self._leftMotorKp.get():.2f}\r\n")
-                self._ser.write(f" - Ki: {self._leftMotorKi.get():.2f}")
+                self._ser.write(f" - Motor Kp: {self._leftMotorKp.get():.2f}\r\n")
+                self._ser.write(f" - Motor Ki: {self._leftMotorKi.get():.2f}\r\n")
+                self._ser.write(f" - Line follower Kp: {self._lineFollowKp.get():.2f}\r\n")
+                self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
+                if not self._save_gains():
+                    self._ser.write(f"Warning: failed to save {_GAINS_FILE}.\r\n")
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
 
@@ -299,6 +366,39 @@ class task_user:
             # -----------------------
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
+
+                # LINE SENSOR CENTROID VISUALIZATION
+                """
+                raw, calibrated, value = self._reflectanceSensor.get_values()
+                self._ser.write(f" RAW   CALIBRATED  \r\n")
+                for i in range(len(raw)):
+                    self._ser.write(f"{raw[i]}")
+                    self._ser.write('   ')
+                    for _ in range(int(calibrated[i]*10)):
+                        self._ser.write('+')
+                    self._ser.write("\r\n")
+
+                self._ser.write(f"Measured value: {value:.2f}\r\n")
+                """
+                """
+                self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
+                value = yield from multichar_input(self._ser)
+                """
+
+                # BATTERY DROOP COMPENSATION
+                """
+                adcVal = self._battAdc.read()
+
+                adcVoltage = (adcVal / 4096 * 3.3)
+
+                # Scale for 4.7k and 10k voltage divider
+                battVoltage = adcVoltage / 0.305
+
+                # Calculate scaling factor
+                effortScale = 6.5 / battVoltage
+
+                self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
+                """
 
                 # Return to main prompt
                 self._ser.write(UI_prompt)
@@ -381,23 +481,6 @@ class task_user:
             elif self._state == S9_LINEFOLLOW:
                 self._ser.write("Line Follow Mode\r\n")
 
-                # LINE SENSOR CENTROID VISUALIZATION
-                """
-                raw, calibrated, value = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
-
-                self._ser.write(f"Measured value: {value:.2f}\r\n")
-                """
-                """
-                self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-                """
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
 

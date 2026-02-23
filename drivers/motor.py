@@ -1,4 +1,4 @@
-from pyb import Pin, Timer
+from pyb import Pin, Timer, ADC
 
 
 class Motor:
@@ -18,16 +18,17 @@ class Motor:
         that the pyb.Pin constructor accepts
     """
 
-    def __init__(self, pwm, tim, channel, slp, dir):
+    def __init__(self, pwm, tim, channel, slp, dir, battAdc):
         """
         Initialize motor control.
 
         Parameters
-          pwm     -- pin identifier / pyb.Pin for PWM output (passed to Timer.channel)
-          tim     -- pyb.Timer instance used for PWM
-          channel -- integer channel number for the timer (1..4 typically)
-          slp     -- pin identifier / pyb.Pin for sleep (enable) pin
-          dir     -- pin identifier / pyb.Pin for direction pin
+          pwm      -- pin identifier / pyb.Pin for PWM output (passed to Timer.channel)
+          tim      -- pyb.Timer instance used for PWM
+          channel  -- integer channel number for the timer (1..4 typically)
+          slp      -- pin identifier / pyb.Pin for sleep (enable) pin
+          dir      -- pin identifier / pyb.Pin for direction pin
+          batt_adc -- pin identifier / pyb.Pin for battery ADC
         """
         # Create/configure the timer channel for PWM (starts at 0% duty).
         # This mirrors the original usage of tim.channel(..., pulse_width_percent=0).
@@ -37,6 +38,9 @@ class Motor:
         # Note: original code used Pin(slp, Pin.OUT_PP) etc., so we preserve that.
         self.sleep = Pin(slp, Pin.OUT_PP)
         self.dir = Pin(dir, Pin.OUT_PP)
+
+        # Configure battery ADC pin for battery droop compensation
+        self._battAdc = ADC(Pin(battAdc))
 
         # Start disabled and with zero effort to match original behavior.
         self.disable()
@@ -68,6 +72,10 @@ class Motor:
         The method writes the direction pin and then sets PWM duty to the
         absolute magnitude of `value` (via pulse_width_percent).
 
+        The effort is capped such that 100% effort corresponds to 6.5V by
+        measuring battery voltage and applying a scale factor to the
+        effort requested
+
         IMPORTANT: behavior unchanged from original code — there is no extra
         validation/clamping here.
         """
@@ -83,6 +91,19 @@ class Motor:
             value = 100
         elif value < -100:
             value = -100
+
+        # --- Scale value to account for battery droop
+        adcVoltage = self._battAdc.read() / 4096 * 3.3
+
+        # Scale for 4.7k and 10k voltage divider.
+        # (Slightly tweaked to account for actual VDD)
+        battVoltage = adcVoltage / 0.305
+
+        # Calculate scaling factor
+        effortScale = 6.5 / battVoltage
+
+        # Apply scaling factor to battery voltage
+        value *= effortScale
             
         # Apply absolute percent duty to PWM channel.
         self.pwm.pulse_width_percent(abs(value))

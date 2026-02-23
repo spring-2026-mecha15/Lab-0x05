@@ -8,6 +8,10 @@ from utime        import ticks_us, ticks_diff
 import micropython
 from controller   import PIController
 from constants    import *
+try:
+    import ujson as json
+except ImportError:
+    import json
 
 S0_INIT = micropython.const(0) # State 0 - initialiation
 S1_WAIT = micropython.const(1) # State 1 - wait for go command
@@ -76,8 +80,34 @@ class task_motor:
             (-100, 100)               # Saturation min, max range
                                       # For motor: -100 to 100 % duty cycle
         )
+
+        self._load_gains()
+
+        # Cache initial gains in memory
+        self._kp_init = self._kpVal.get()
+        self._ki_init = self._kiVal.get()
+        self._controller.Kp = self._kp_init
+        self._controller.Ki = self._ki_init
         
         print("Motor Task object instantiated")
+
+    def _load_gains(self) -> bool:
+        try:
+            with open(GAINS_FILE, "r") as gains_file:
+                data = json.load(gains_file)
+        except (OSError, ValueError):
+            return False
+
+        motor = data.get("motor", {})
+        motor_kp = motor.get("kp")
+        motor_ki = motor.get("ki")
+
+        if motor_kp is not None:
+            self._kpVal.put(float(motor_kp))
+        if motor_ki is not None:
+            self._kiVal.put(float(motor_ki))
+
+        return True
         
     def run(self):
         '''

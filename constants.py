@@ -27,6 +27,8 @@ try:
     QTRX_A11 = Pin.cpu.C1
     QTRX_A13 = Pin.cpu.C0
 
+    BATT_ADC = Pin.cpu.B1
+
 except ImportError:
     print('Info: skipping pin definitions on non-STM32 device')
 
@@ -51,6 +53,7 @@ MOTOR_GAIN         = MOTOR_CONST * 60 * 100 / (2 * PI * WHEEL_RADIUS)
 CSV_BEGIN = '>>>>CSV START<<<<'            
 CSV_END = '>>>>CSV END<<<<'            
 
+GAINS_FILE = "gains.json"
 
 # # Typical main.py setup:
 # from pyb import Timer

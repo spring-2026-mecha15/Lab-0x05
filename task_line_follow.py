@@ -1,5 +1,10 @@
 from task_share import Share
 from controller import PIController
+try:
+    import ujson as json
+except ImportError:
+    import json
+from constants import GAINS_FILE
 
 SPEED = 70
 
@@ -7,50 +12,88 @@ class task_line_follow:
     def __init__(
             self,
             lineFollowGo:       Share,
+            lineFollowKp:       Share,
+            lineFollowKi:       Share,
             lineCentroid:       Share,
             rightMotorSetPoint: Share,
             leftMotorSetPoint:  Share
         ):
         
-        self._state = 0
+        self._state               = 0
 
-        self._lineFollowGo = lineFollowGo
+        self._goFlag              = lineFollowGo
 
-        self._lineCentroid = lineCentroid
+        self._Kp                  = lineFollowKp
 
-        self._rightMotorSetPoint = rightMotorSetPoint
+        self._Ki                  = lineFollowKi
 
-        self._leftMotorSetPoint = leftMotorSetPoint
+        self._lineCentroid        = lineCentroid
 
-        self._controller = PIController(
-            self.plant,
-            1,
+        self._rightMotorSetPoint  = rightMotorSetPoint
+
+        self._leftMotorSetPoint   = leftMotorSetPoint
+
+        self._controller = PIController(        # Instantiate a PI controller to affect Romi spin
+            self.plant_cb,                      # as the line centroid drifts from center.
+            1,                                  # Actuator and plant gains set to unity.
             self._lineCentroid.get,
             1,
             (-100, 100)
         )
 
-        # Set Controller Parameters
-        self._controller.Ki = 1                  # Will implement integral control
+        self._load_gains()
 
-        self._controller.Kp = 25                  # Proportional gain
+        # Set Controller Parameters
+        self._controller.Kp = lineFollowKp.get() # Proportional gain
+        self._controller.Ki = lineFollowKi.get() # Integral gain
 
         self._controller.set_point = 0           # Setpoint is 0: corresponding to 
                                                  # keeping the line centered under romi
 
-        # self._count = 0
-
         print("Line follower task instantiated")
 
+    def _load_gains(self) -> bool:
+        try:
+            with open(GAINS_FILE, "r") as gains_file:
+                data = json.load(gains_file)
+        except (OSError, ValueError):
+            return False
+
+        line_follower = data.get("line_follower", {})
+        lf_kp = line_follower.get("kp")
+        lf_ki = line_follower.get("ki")
+
+        if lf_kp is not None:
+            self._Kp.put(float(lf_kp))
+        if lf_ki is not None:
+            self._Ki.put(float(lf_ki))
+
+        return True
+
     def run(self):
+        # Track previous goflag state to determine when flag was just set
+        oldGo = False
+
         while True:
-            if self._lineFollowGo.get():
+            if self._goFlag.get():
+
+                # Update line follow gains once each time go flag is set
+                if not(oldGo):
+                    self._controller.Kp = self._Kp.get()
+                    self._controller.Ki = self._Ki.get()
+                    oldGo = True
+                
+                # Run line follower PI control
+                # input will be read from the centroid share
+                # output will be sent to `plant_cb`
                 self._controller.run()
+
+            else:
+                oldGo = False
 
             yield self._state
 
-    def plant(self, value):
+    def plant_cb(self, value):
         # print(f'{self._count} - Plant rx value: {value:.3f}')
-        # self._count += 1
         self._leftMotorSetPoint.put(SPEED + value)
         self._rightMotorSetPoint.put(SPEED - value)

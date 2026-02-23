@@ -56,8 +56,8 @@ tim2 = Timer(2)             # Left encoder input capture
 tim3 = Timer(3, freq=50000) # Motor PWM frequency (50 kHz)
 
 # Initialize motor driver objects
-rightMotor = Motor(MOTOR_R_PWM, tim3, 1, MOTOR_R_SLP, MOTOR_R_DIR)
-leftMotor = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR)
+rightMotor = Motor(MOTOR_R_PWM, tim3, 1, MOTOR_R_SLP, MOTOR_R_DIR, BATT_ADC)
+leftMotor = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR, BATT_ADC)
 
 # Initialize encoder feedback objects
 rightEncoder = Encoder(tim1, ENCODER_R_A, ENCODER_R_B)
@@ -97,8 +97,10 @@ timeValues = Queue("L", 50, name="Time Buffer")
 
 # Line following sensor shares
 lineCentroid        = Share("f", name="Line Centroid Val")
-lineFound          = Share("B", name="Line Found Flag") # For future use
-lineFollowGo       = Share("B", name="Line Follow Go Flag")
+lineFound           = Share("B", name="Line Found Flag") # For future use
+lineFollowGo        = Share("B", name="Line Follow Go Flag")
+lineFollowKp        = Share("f", name="Line Follow Kp Gain")
+lineFollowKi        = Share("f", name="Line Follow Ki Gain")
 
 # Reflectance sensor array shares
 #  Mode:
@@ -128,12 +130,15 @@ userTask = task_user(
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues,
-    reflectanceMode, lineFollowGo, lineCentroid
+    reflectanceMode,
+    lineFollowGo, lineFollowKp, lineFollowKi, lineCentroid
     )
 
 # Create a line follower control instance
 lineFollowTask = task_line_follow(
     lineFollowGo,
+    lineFollowKp,
+    lineFollowKi,
     lineCentroid,
     rightMotorSetPoint,
     leftMotorSetPoint
