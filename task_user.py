@@ -261,10 +261,13 @@ class task_user:
                 if self._ser.any():
                     self._ser.read(1)
 
-                # When both go flags clear, collection is finished
-                if not self._leftMotorGo.get() and not self._rightMotorGo.get():
+                # When queues are full, stop the motor and print results
+                if self._dataValues.full() or self._timeValues.full():
+                    # Disable motors
+                    self._leftMotorGo.put(0)
+                    self._rightMotorGo.put(0)
+
                     self._ser.write("Data collection complete...\r\n")
-                    self._ser.write("Printing data...\r\n")
                     self._ser.write(f"{CSV_BEGIN}\r\n")
                     self._ser.write("Time (ms), Velocity (mm/s)\r\n")
                     self._state = S6_DISPLAY_DATA
