@@ -1,7 +1,7 @@
 from task_share import Share
 from controller import PIController
 
-SPEED = 25
+SPEED = 70
 
 class task_line_follow:
     def __init__(

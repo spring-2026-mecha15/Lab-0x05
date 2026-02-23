@@ -25,6 +25,7 @@ S5_COLLECT = micropython.const(5)       # Wait for data collection to finish
 S6_DISPLAY_DATA = micropython.const(6)  # Print collected CSV data
 S7_DEBUG = micropython.const(7)         # For Misc Debugging
 S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
+S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
 
 # Reusable UI text
 UI_prompt = """\r\n\n
@@ -35,7 +36,8 @@ UI_prompt = """\r\n\n
 | k | Enter new gain values                                             |\r
 | s | Choose a new setpoint                                             |\r
 | g | Trigger step response and print results                           |\r
-| c | Line Sensor Calibration.                                          |\r
+| c | Line Sensor Calibration                                           |\r
+| l | Follow Line                                                       |\r
 | i | Misc Debug                                                        |\r
 +---+-------------------------------------------------------------------+\r
 \r
@@ -165,6 +167,11 @@ class task_user:
                     elif inChar in {"i", "I"}:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S7_DEBUG
+
+                    # Line Follow
+                    elif inChar in {"l", "L"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S9_LINEFOLLOW
 
             # -----------------------
             # S2_HELP: display help, wait for Enter
@@ -405,6 +412,68 @@ class task_user:
                 # Return to main prompt
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
+
+            # -----------------------
+            # S9_LINEFOLLOW: Line Following State
+            # -----------------------
+            elif self._state == S9_LINEFOLLOW:
+                self._ser.write("Line Follow Mode\r\n")
+
+                # LINE SENSOR CENTROID VISUALIZATION
+                """
+                raw, calibrated, value = self._reflectanceSensor.get_values()
+                self._ser.write(f" RAW   CALIBRATED  \r\n")
+                for i in range(len(raw)):
+                    self._ser.write(f"{raw[i]}")
+                    self._ser.write('   ')
+                    for _ in range(int(calibrated[i]*10)):
+                        self._ser.write('+')
+                    self._ser.write("\r\n")
+
+                self._ser.write(f"Measured value: {value:.2f}\r\n")
+                """
+
+
+                # Set sensor array into RUN mode
+                self._reflectanceMode.put(3)
+
+                # Configure motor control params
+                self._leftMotorKi.put(0.6)
+                self._rightMotorKi.put(0.6)
+
+                self._leftMotorKp.put(0.02)
+                self._rightMotorKp.put(0.02)
+
+                self._leftMotorSetPoint.put(0)
+                self._rightMotorSetPoint.put(0)
+
+                self._leftMotorGo.put(1)
+                self._rightMotorGo.put(1)
+
+                # Enable line following controller
+                self._lineFollowGo.put(
+                    not(self._lineFollowGo.get())
+                )
+
+
+                self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
+
+                # Wait for newline or carriage return, non-blocking (yielding)
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"\r", "\n"}:
+                            # Clear any remaining input then exit help
+                            while self._ser.any():
+                                self._ser.read(None)
+                            break
+                    yield
+
+                
+                # Return to main prompt
+                self._ser.write(UI_prompt)
+                self._state = S1_CMD
+
 
             # Yield the current state per scheduler convention
             yield self._state
