@@ -307,7 +307,8 @@ class task_user:
                 self._ser.write(f"Measured value: {value:.2f}\r\n")
                 """
 
-
+                # LINE FOLLOWING INITAL DEBUGGING
+                #"""
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
 
@@ -324,37 +325,43 @@ class task_user:
                 self._leftMotorGo.put(1)
                 self._rightMotorGo.put(1)
 
-                # Enable line following controller
+                # Toggle line following controller
                 self._lineFollowGo.put(
                     not(self._lineFollowGo.get())
                 )
+                #"""
 
                 # Return to main prompt
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
 
             # -----------------------
-            # S8_CALIBRATE: calibraiton state
+            # S8_CALIBRATE: calibration state
             # -----------------------
             elif self._state == S8_CALIBRATION:
                 self._ser.write("CALIBRATION\r\n")
+
+                # Double check this is the action the user wants to make
                 self._ser.write("Would you like to begin calibration (y/n)?\r\n")
 
+                # Check for a valid keystroke
                 while True:
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
                         if inChar in {"y", "Y", "n", "N"}:
                             break
 
+                # If NO selected, return to main menu from this point
                 if inChar in {"n", "N"}:
                     self._ser.write(UI_prompt)
                     self._state = S1_CMD
-                    yield
+
+                    yield 0
                     continue
 
-
+                # Begin with light side calibration
                 self._ser.write("Place Romi on a light surface. Press Enter when ready\r\n")
-
+                # Wait for ENT (cooperative)
                 while True:
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
@@ -365,16 +372,17 @@ class task_user:
                             break
                     yield 0
 
-                # Request that reflectance sensor goes into dark calib. mode
+                # Request that reflectance sensor goes into light calib. mode
                 self._reflectanceMode.put(2)
 
-                # Wait for 'ack' that calibration is done
+                # Wait for 'ack' that calibration is done (mode = 0)
                 while self._reflectanceMode.get() != 0:
                     yield 0
 
+                # Then perform dark side calibration
                 self._ser.write("Please Place Romi On a Dark Surface. Press Enter When Complete\r\n")
 
-                # Wait for newline or carriage return, non-blocking (yielding)
+                # Wait for ENT (cooperative)
                 while True:
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
@@ -383,12 +391,12 @@ class task_user:
                             while self._ser.any():
                                 self._ser.read(None)
                             break
-                    yield
+                    yield 0
 
                 # Request that reflectance sensor goes into light calib. mode
                 self._reflectanceMode.put(1)
 
-                # Wait for 'ack' that calibration is done
+                # Wait for 'ack' that calibration is done (mode = 0)
                 while self._reflectanceMode.get() != 0:
                     yield 0
 

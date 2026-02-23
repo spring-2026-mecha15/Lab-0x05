@@ -81,11 +81,11 @@ class task_reflectance:
 
 
             elif self._state == S3_RUN:
-                # Check if we are done running first
+                # First, test flag for exit
                 if self._mode.get() == 0:
                     self._state = S0_IDLE
 
-                # If running, put the latest centroid in the share
+                # If running, get latest centroid and put into share
                 centroid = self._sensor.get_centroid()
                 self._lineCentroid.put(centroid)
 

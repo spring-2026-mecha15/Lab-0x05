@@ -123,17 +123,15 @@ class Reflectance_Sensor:
         return self.get_values()[2]
 
     def load_calibration_from_file(self, filename: str):
-        """Load calibration file into `self._calibration` as `[dark, light]` pairs."""
+        """Load calibration file into `self._calibration`.
+
+        The on-disk format must be a list of dicts with 'dark' and
+        'light' keys (the format produced by `calibrate`).
+        """
         with open(filename, "r") as fhand:
             calibration = json.load(fhand)
 
-            self._calibration = []
-            for cal_pair in calibration:
-                self._calibration.append([
-                    cal_pair['dark'],
-                    cal_pair['light']
-                ])
-
+        self._calibration = calibration
 
         print(self._calibration)
 
