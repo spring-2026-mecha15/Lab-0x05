@@ -14,25 +14,27 @@ import math
 #  handled and alerted to the user via the terminal.                       #
 ############################################################################
 
-def plot_csv(filenames: list[str]):
-    # Create figure with custom layout using GridSpec
-    # Top: 1 large combined plot spanning full width
-    # Bottom: Individual plots arranged in a grid
+def plot_csv(filenames: list[str], include_combined: bool = True):
+    # Create figure with optional combined overlay + individual plots.
     num_files = len(filenames)
     individual_cols = max(1, min(3, math.ceil(math.sqrt(num_files))))
     individual_rows = math.ceil(num_files / individual_cols)
-    total_rows = 1 + individual_rows
+    total_rows = individual_rows + (1 if include_combined else 0)
 
-    fig = pyplot.figure(figsize=(5 * individual_cols, 4 + 3 * individual_rows))
-    gs = GridSpec(total_rows, individual_cols, figure=fig, height_ratios=[1.3] + [1] * individual_rows)
+    fig_height = (4 + 3 * individual_rows) if include_combined else (3 * individual_rows)
+    fig = pyplot.figure(figsize=(5 * individual_cols, fig_height))
+    if include_combined:
+        gs = GridSpec(total_rows, individual_cols, figure=fig, height_ratios=[1.3] + [1] * individual_rows)
+        # Combined plot spans all columns on the first row.
+        ax_combined = fig.add_subplot(gs[0, :])
+    else:
+        gs = GridSpec(total_rows, individual_cols, figure=fig)
+        ax_combined = None
 
-    # Combined plot spans all columns on the first row
-    ax_combined = fig.add_subplot(gs[0, :])
-
-    # Individual plots fill the remaining grid rows
+    # Individual plots fill the grid.
     axes_individual = []
     for file_idx in range(num_files):
-        row = 1 + (file_idx // individual_cols)
+        row = (1 if include_combined else 0) + (file_idx // individual_cols)
         col = file_idx % individual_cols
         axes_individual.append(fig.add_subplot(gs[row, col]))
     
@@ -120,16 +122,17 @@ def plot_csv(filenames: list[str]):
             'label': os.path.basename(filename)
         })
 
-    # Plot all data overlayed on the single left subplot
-    for file_data in all_data:
-        ax_combined.plot(file_data['x'], file_data['y'], label=file_data['label'])
-    ax_combined.set_xlabel(all_data[0]['header'][0])
-    ax_combined.set_ylabel(all_data[0]['header'][1])
-    ax_combined.legend()
-    ax_combined.set_title('All Data Overlayed')
-    ax_combined.grid(True, alpha=0.3)
+    # Plot all data overlayed on the combined subplot (optional).
+    if include_combined and all_data:
+        for file_data in all_data:
+            ax_combined.plot(file_data['x'], file_data['y'], label=file_data['label'])
+        ax_combined.set_xlabel(all_data[0]['header'][0])
+        ax_combined.set_ylabel(all_data[0]['header'][1])
+        ax_combined.legend()
+        ax_combined.set_title('All Data Overlayed')
+        ax_combined.grid(True, alpha=0.3)
 
-    # Plot individual data on the right subplots (stacked)
+    # Plot individual data on each subplot.
     for file_idx, file_data in enumerate(all_data):
         ax = axes_individual[file_idx]
         ax.plot(file_data['x'], file_data['y'], label=file_data['label'])

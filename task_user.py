@@ -484,7 +484,7 @@ class task_user:
             # -----------------------
             elif self._state == S9_LINEFOLLOW:
                 self._ser.write("Line Follow Mode\r\n")
-                '''self._UART.write("Line Follow Mode\r\n")'''
+                self._UART.write("Line Follow Mode\r\n")
 
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
@@ -508,14 +508,17 @@ class task_user:
                 self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
 
                 # Wait for newline or carriage return, non-blocking (yielding)
+                self._ser.write(f"{CSV_BEGIN}\r\n")
+                stream_decimation = 5
+                sample_idx = 0
                 while True:
-                    # Stream centroid CSV rows over REPL/UI port when queued samples exist
-                    if self._centroidTimeValues.any() and self._centroidValues.any():
-                        self._ser.write(
-                            f"{self._centroidTimeValues.get()},{self._centroidValues.get()}\r\n"
-                        )
-
-
+                    # Decimate queued samples; stream only every Nth row to reduce CSV volume.
+                    while self._centroidTimeValues.any() and self._centroidValues.any():
+                        t_ms = self._centroidTimeValues.get()
+                        centroid = self._centroidValues.get()
+                        if (sample_idx % stream_decimation) == 0:
+                            self._ser.write(f"{t_ms},{centroid}\r\n")
+                        sample_idx += 1
 
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
@@ -525,8 +528,9 @@ class task_user:
                                 self._ser.read(None)
                             break
                     yield
-
+                    
                 # Stop line-following mode and related tasks before returning.
+                self._ser.write(f"{CSV_END}\r\n")
                 self._lineFollowGo.put(0)
                 self._reflectanceMode.put(0)
                 self._leftMotorGo.put(0)

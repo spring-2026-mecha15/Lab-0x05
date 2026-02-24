@@ -168,7 +168,7 @@ def run_step_test(com_port):
 
         print('All runs complete')
         # Plot the results (plot_csv expects a list of file paths)
-        plot_csv(filenames)
+        plot_csv(filenames, include_combined=True)
 
         return 0
 
@@ -228,52 +228,26 @@ def run_circle_log_placeholder(com_port):
 
         # Stream CSV lines into the file until CSV END marker appears
         with open(filepath, 'w', newline='') as fhand:
+            fhand.write('time_s,centroid_deviation\n')
             for line in read_csv_data(ser):
-                # Stop when device signals end of CSV
+                parts = line.strip().split(',', 1)
+                if len(parts) == 2:
+                    try:
+                        fhand.write(f'{float(parts[0]) / 1000.0},{parts[1]}\n')
+                        continue
+                    except ValueError:
+                        pass
                 fhand.write(line)
-
-        filenames.append(filepath)
-        print('complete')
 
         return 0
 
     except KeyboardInterrupt:
         print("\nCircle log cancelled. Returning to menu.")
         ser.write(b'\x03')
-        return 1
-
-    finally:
-        if ser is not None and ser.is_open:
-            try:
-                ser.close()
-            except Exception:
-                pass
-
-
-def run_debug_mode(com_port):
-    ser = None
-    try:
-        try:
-            ser = serial.Serial(com_port, baudrate=BAUDRATE, timeout=1.0)
-        except SerialException as e:
-            msg = e.args[0] if e.args else str(e)
-            if "PermissionError" in msg or "Access is denied" in msg:
-                print("\r\nRomi found, but already in use!")
-            else:
-                print("\r\nSerial open error:", e)
-            return 1
-
-        print("\nDebug mode active. Printing all received serial data. Ctrl-C to return.\n")
-        while True:
-            raw = ser.readline()
-            if not raw:
-                continue
-            text = raw.decode(errors="ignore")
-            if text:
-                print(text, end="")
-
-    except KeyboardInterrupt:
-        print("\nDebug mode cancelled. Returning to menu.")
+        time.sleep(0.05)
+        ser.write(b'\x04')
+        filenames.append(filepath)
+        plot_csv(filenames, include_combined=False)
         return 1
 
     finally:
