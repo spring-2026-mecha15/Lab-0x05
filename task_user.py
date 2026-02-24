@@ -309,7 +309,7 @@ class task_user:
                 self._ser.write(f" - Line follower Kp: {self._lineFollowKp.get():.2f}\r\n")
                 self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
                 if not self._save_gains():
-                    self._ser.write(f"Warning: failed to save {_GAINS_FILE}.\r\n")
+                    self._ser.write(f"Warning: failed to save {GAINS_FILE}.\r\n")
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
 
@@ -484,6 +484,7 @@ class task_user:
             # -----------------------
             elif self._state == S9_LINEFOLLOW:
                 self._ser.write("Line Follow Mode\r\n")
+                '''self._UART.write("Line Follow Mode\r\n")'''
 
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
@@ -508,10 +509,9 @@ class task_user:
 
                 # Wait for newline or carriage return, non-blocking (yielding)
                 while True:
-
-                    # Stream centroid CSV rows over UART when queued samples exist
+                    # Stream centroid CSV rows over REPL/UI port when queued samples exist
                     if self._centroidTimeValues.any() and self._centroidValues.any():
-                        self._UART.write(
+                        self._ser.write(
                             f"{self._centroidTimeValues.get()},{self._centroidValues.get()}\r\n"
                         )
 

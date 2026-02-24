@@ -104,5 +104,4 @@ class task_reflectance:
                     self._centroidValues.put(centroid)
                     self._centroidTimeValues.put(int(ticks_diff(ticks_us(), self._runStartTime) / 1000))
 
-
             yield self._state
