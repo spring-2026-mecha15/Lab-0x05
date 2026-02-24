@@ -103,6 +103,7 @@ centroidTimeValues = Queue("L", 500, name="Centroid Time Buffer")
 lineCentroid        = Share("f", name="Line Centroid Val")
 lineFound           = Share("B", name="Line Found Flag") # For future use
 lineFollowGo        = Share("B", name="Line Follow Go Flag")
+lineFollowSetPoint  = Share("f", name="Line Follow Set Point")
 lineFollowKp        = Share("f", name="Line Follow Kp Gain")
 lineFollowKi        = Share("f", name="Line Follow Ki Gain")
 
@@ -136,12 +137,13 @@ userTask = task_user(
     dataValues, timeValues,
     centroidValues, centroidTimeValues,
     reflectanceMode,
-    lineFollowGo, lineFollowKp, lineFollowKi, lineCentroid
+    lineFollowGo, lineFollowSetPoint, lineFollowKp, lineFollowKi, lineCentroid
     )
 
 # Create a line follower control instance
 lineFollowTask = task_line_follow(
     lineFollowGo,
+    lineFollowSetPoint,
     lineFollowKp,
     lineFollowKi,
     lineCentroid,
@@ -168,15 +170,15 @@ reflectanceTask = task_reflectance(
 # Priority: 2 (highest) for left motor, 1 for right motor, 0 (lowest) for user interface
 # Period: 20 ms (50 Hz) for motor tasks, 0 ms (run as available) for user task
 task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
-                      priority=2, period=25, profile=True))
+                      priority=2, period=20, profile=True))
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
-                      priority=1, period=25, profile=True))
+                      priority=1, period=20, profile=True))
 task_list.append(Task(userTask.run, name="User Int. Task",
                       priority=0, period=0, profile=False))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
-                      priority=4, period=25, profile=True))
+                      priority=4, period=15, profile=True))
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
-                      priority=5, period=10, profile=True))
+                      priority=5, period=15, profile=True))
 
 gc.collect()
 

@@ -72,6 +72,7 @@ class task_user:
         centroidTimeValues,    # type: Queue
         reflectanceMode,       # type: Share
         lineFollowGo,          # type: Share
+        lineFollowSetPoint,    # type: Share
         lineFollowKp,          # type: Share
         lineFollowKi,          # type: Share
         lineCentroid           # type: Share
@@ -103,9 +104,10 @@ class task_user:
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
 
         # Serial interface for host UI over ST-Link VCP (UART2)
-        self._UART = UART(2, 115200)               # type: UART
+        # self._UART = UART(2, 115200)               # type: UART
+        self._ser = UART(2, 115200)               # type: UART
         # Serial interface (USB virtual COM port / REPL-side UI)
-        self._ser = USB_VCP()                       # type: USB_VCP
+        # self._ser = USB_VCP()                       # type: USB_VCP
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
@@ -116,6 +118,7 @@ class task_user:
         # Shares for reflectance sensor
         self._reflectanceMode = reflectanceMode     # type: Share
         self._lineFollowGo = lineFollowGo           # type: Share
+        self._lineFollowSetPoint = lineFollowSetPoint
         self._lineFollowKp = lineFollowKp           # type: Share
         self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
@@ -135,6 +138,7 @@ class task_user:
             "line_follower": {
                 "kp": self._lineFollowKp.get(),
                 "ki": self._lineFollowKi.get(),
+                "set_point": self._lineFollowSetPoint.get()
             },
         }
 
@@ -207,6 +211,12 @@ class task_user:
                     elif inChar in {"l", "L"}:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S9_LINEFOLLOW
+
+                    elif inChar in {"\r", "\n"}:
+                        self._ser.write(UI_prompt)
+
+                        while self._ser.any():
+                            self._ser.read(None)
 
             # -----------------------
             # S2_HELP: display help, wait for Enter
@@ -314,11 +324,11 @@ class task_user:
                 self._state = S1_CMD
 
             # -----------------------
-            # S4_SETPOINT: prompt for setpoint (uses multichar_input)
+            # S4_SETPOINT: prompt for setpoints (uses multichar_input)
             # -----------------------
             elif self._state == S4_SETPOINT:
-                self._ser.write(f"\r\nCurrent setpoint: {self._leftMotorSetPoint.get():.2f}\r\n")
-                self._ser.write("\r\nEnter new setpoint: \r\n->: ")
+                self._ser.write(f"\r\nCurrent motor setpoint: {self._leftMotorSetPoint.get():.2f}\r\n")
+                self._ser.write("\r\nEnter new motor setpoint: \r\n->: ")
                 value = yield from multichar_input(self._ser)
 
                 if value is not None:
@@ -327,6 +337,19 @@ class task_user:
                     self._ser.write(f"\r\nSetpoint Set To: {value:.2f}")
                 else:
                     self._ser.write("\r\nNo setpoint specified. Value unchanged.")
+
+
+                self._ser.write(f"\r\nCurrent line follow setpoint: {self._lineFollowSetPoint.get():.2f}\r\n")
+                self._ser.write("\r\nEnter new LF setpoint: \r\n->: ")
+                value = yield from multichar_input(self._ser)
+
+                if value is not None:
+                    self._lineFollowSetPoint.put(value)
+                    self._ser.write(f"\r\nLF Setpoint Set To: {value:.2f}")
+                else:
+                    self._ser.write("\r\nNo LF setpoint specified. Value unchanged.")
+
+                self._save_gains()
 
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
@@ -484,7 +507,7 @@ class task_user:
             # -----------------------
             elif self._state == S9_LINEFOLLOW:
                 self._ser.write("Line Follow Mode\r\n")
-                self._UART.write("Line Follow Mode\r\n")
+                # self._UART.write("Line Follow Mode\r\n")
 
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
