@@ -63,11 +63,10 @@ def read_csv_data(ser: serial.Serial):
             # yield a line that includes newline at end (keeps original behaviour)
             yield text + '\n'
         except KeyboardInterrupt:
-            break
+            raise
         except Exception as e:
             print(f"Read error: {e}")
             break
-
 
 def run_step_test(com_port):
     ser = None
@@ -96,6 +95,9 @@ def run_step_test(com_port):
         foldername = time.strftime("%Y%m%d_%H%M%S")
         directory = os.path.join(os.path.dirname(__file__), 'data', foldername)
         os.makedirs(directory, exist_ok=True)
+        filenames = []
+        filename = "circle_log.csv"
+        filepath = os.path.join(directory, filename)
 
         filenames = []
 
@@ -173,7 +175,7 @@ def run_step_test(com_port):
         return 0
 
     except KeyboardInterrupt:
-        print("\nUser interrupted. Closing serial and exiting.")
+        print("\nStep test cancelled. Returning to menu.")
         return 1
 
     finally:
@@ -183,9 +185,70 @@ def run_step_test(com_port):
             except Exception:
                 pass
 
-def run_circle_log_placeholder():
-    """Placeholder desktop UI state for future circle logging workflow."""
-    print("\n[Circle Log]")
-    print("Placeholder state only. Fill this in later.")
-    input("Press Enter to return to the menu...")
-    return 0
+def run_circle_log_placeholder(com_port):
+    ser = None
+    try:
+        # -------------------------
+        # Open serial connection
+        # -------------------------
+        try:
+            ser = serial.Serial(com_port, baudrate=BAUDRATE, timeout=1.0)
+        except SerialException as e:
+            # Try to give a helpful message if port is in use
+            msg = e.args[0] if e.args else str(e)
+            if "PermissionError" in msg or "Access is denied" in msg:
+                print("\r\nRomi found, but already in use!")
+            else:
+                print("\r\nSerial open error:", e)
+            return 1
+
+        # Send Ctrl-C + Ctrl-D to soft reset the board
+        ser.write(b'\x03\x04')
+        print("connected!")
+
+        # -------------------------
+        # Create output folder
+        # -------------------------
+        foldername = time.strftime("%Y%m%d_%H%M%S")
+        directory = os.path.join(os.path.dirname(__file__), 'data', foldername)
+        os.makedirs(directory, exist_ok=True)
+        filenames = []
+        filename = "circle_log.csv"
+        filepath = os.path.join(directory, filename)
+
+        # Trigger Line Following
+        ser.write(b'l')
+
+        # Wait for CSV START marker before streaming CSV lines
+        while True:
+            line = ser.readline().decode()
+            if not line:
+                continue
+            try:
+                if CSV_BEGIN in line:
+                    break
+            except Exception:
+                pass
+
+        # Stream CSV lines into the file until CSV END marker appears
+        with open(filepath, 'w', newline='') as fhand:
+            for line in read_csv_data(ser):
+                # Stop when device signals end of CSV
+                fhand.write(line)
+
+        filenames.append(filepath)
+        print('complete')
+
+        return 0
+
+    except KeyboardInterrupt:
+        print("\nCircle log cancelled. Returning to menu.")
+        ser.write(b'\x03\x04')
+        return 1
+
+    finally:
+        if ser is not None and ser.is_open:
+            try:
+                ser.close()
+            except Exception:
+                pass

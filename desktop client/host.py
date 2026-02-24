@@ -11,7 +11,6 @@ Host-side test runner for Romi experiments.
 Note: This runs on a host computer (CPython) and is not for MicroPython.
 """
 import sys
-import os
 from serial.tools import list_ports
 from UI_Functions import run_step_test, run_circle_log_placeholder
 
@@ -75,15 +74,12 @@ def main():
                 state = S0_INIT
 
             elif state == S3_CIRCLE_LOG:
-                run_circle_log_placeholder()
+                run_circle_log_placeholder(com_port)
                 state = S0_INIT
 
     except KeyboardInterrupt:
-        print("\nExiting host UI.")
-        return 0
-
-    return 0
-
+        print("\nExiting Roami Desktop CLI.")
+        return
 
 if __name__ == "__main__":
     sys.exit(main())
