@@ -38,7 +38,7 @@ class task_line_follow:
 
         self._controller = PIController(        # Instantiate a PI controller to affect Romi spin
             self.plant_cb,                      # as the line centroid drifts from center.
-            1,                                  # Actuator and plant gains set to unity.
+            141,                                # Velocity at wheels = W*Omega, where W is wheel width (141mm)
             self._lineCentroid.get,
             1,
             (-100, 100)
@@ -90,7 +90,14 @@ class task_line_follow:
                 if not(oldGo):
                     self._controller.Kp = self._Kp.get()
                     self._controller.Ki = self._Ki.get()
-                    self._nominalSetPoint = self._setPoint.get()
+                    self._nominalSetPoint = self._setPoint.get() # Setpoint in mm/s
+
+                    # Configure feed-forward for this velocity
+                    radius = 300 # radius of test circle in mm
+                    omega = self._nominalSetPoint / radius
+
+                    self._controller.set_feed_forward(omega, 0.5)
+
                     self._controller.reset()
                     
                     oldGo = True

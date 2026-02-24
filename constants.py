@@ -15,6 +15,10 @@ try:
     ENCODER_L_A = Pin.cpu.A1
     ENCODER_L_B = Pin.cpu.A0
 
+    # IMU connected to I2C Bus 2
+    # Pins must be configured to use AF-4
+    # https://www.st.com/resource/en/datasheet/stm32l476rg.pdf
+    # Table-17, page 89.
     IMU_RST = Pin.cpu.B15
     IMU_SCL = Pin.cpu.B14
     IMU_SDA = Pin.cpu.B13
