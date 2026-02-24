@@ -20,7 +20,7 @@ except ImportError:
     import json
 
 # State constants (use micropython.const for efficiency on embedded)
-S0_INIT = micropython.const(0)          # Initial state: print prompt
+S0_PROMPT = micropython.const(0)          # Initial state: print prompt
 S1_CMD = micropython.const(1)           # Wait for single-character command
 S2_HELP = micropython.const(2)          # Show help, wait for Enter
 S3_GAINS = micropython.const(3)         # Read new Kp / Ki values
@@ -32,20 +32,20 @@ S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
 S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
 
 # Reusable UI text
-UI_prompt = """\r\n\n
-+-----------------------------------------------------------------------+\r
-| ME 405 Romi Tuning Interface Help Menu                                |\r
-+---+-------------------------------------------------------------------+\r
-| h | Print help menu                                                   |\r
-| k | Enter new gain values                                             |\r
-| s | Choose a new setpoint                                             |\r
-| g | Trigger step response and print results                           |\r
-| c | Line Sensor Calibration                                           |\r
-| l | Follow Line                                                       |\r
-| i | Misc Debug                                                        |\r
-+---+-------------------------------------------------------------------+\r
-\r
->: """
+# UI_prompt = "\r\n\n \
+# +-----------------------------------------------------------------------+\n\r \
+# | ME 405 Romi Tuning Interface Help Menu                                |\n\r \
+# +---+-------------------------------------------------------------------+\n\r \
+# | h | Print help menu                                                   |\n\r \
+# | k | Enter new gain values                                             |\n\r \
+# | s | Choose a new setpoint                                             |\n\r \
+# | g | Trigger step response and print results                           |\n\r \
+# | c | Line Sensor Calibration                                           |\n\r \
+# | l | Follow Line                                                       |\n\r \
+# | i | Misc Debug                                                        |\n\r \
+# +---+-------------------------------------------------------------------+\n\r \
+# \n\r \
+# >: "
 
 
 class task_user:
@@ -79,17 +79,10 @@ class task_user:
     ):
         """
         Initialize the UI task.
-
-        Args (comment-style hints):
-            leftMotorGo, rightMotorGo: Share("B") boolean flags for data collection
-            leftMotorKp, leftMotorKi, rightMotorKp, rightMotorKi: Share("f") gains
-            leftMotorSetPoint, rightMotorSetPoint: Share("f") setpoint values
-            dataValues: Queue("f", ...) encoder/sample data
-            timeValues: Queue("L", ...) timestamps for collected samples
         """
 
         # State machine
-        self._state = S0_INIT  # current state (int)
+        self._state = S0_PROMPT  # current state (int)
 
         # Shares for left motor (comment hints only)
         self._leftMotorGo = leftMotorGo            # type: Share
@@ -105,7 +98,8 @@ class task_user:
 
         # Serial interface for host UI over ST-Link VCP (UART2)
         # self._UART = UART(2, 115200)               # type: UART
-        self._ser = UART(2, 115200)               # type: UART
+        # self._ser = UART(3, 115200)               # type: UART
+        self._ser = UART(3, 38400)               # type: UART
         # Serial interface (USB virtual COM port / REPL-side UI)
         # self._ser = USB_VCP()                       # type: USB_VCP
 
@@ -161,10 +155,29 @@ class task_user:
         while True:
 
             # -----------------------
-            # S0_INIT: print prompt
+            # S0_PROMPT: print prompt
             # -----------------------
-            if self._state == S0_INIT:
-                self._ser.write(UI_prompt)
+            if self._state == S0_PROMPT:
+                while True:
+                    self._ser.write("\r\n\n")
+                    self._ser.write("+-----------------------------------------------------------------------+\n\r")
+                    self._ser.write("| ME 405 Romi Tuning Interface Help Menu                                |\n\r")
+                    self._ser.write("+---+-------------------------------------------------------------------+\n\r")
+                    yield
+                    self._ser.write("| h | Print help menu                                                   |\n\r")
+                    self._ser.write("| k | Enter new gain values                                             |\n\r")
+                    self._ser.write("| s | Choose a new setpoint                                             |\n\r")
+                    self._ser.write("| g | Trigger step response and print results                           |\n\r")
+                    yield
+                    self._ser.write("| c | Line Sensor Calibration                                           |\n\r")
+                    self._ser.write("| l | Follow Line                                                       |\n\r")
+                    self._ser.write("| i | Misc Debug                                                        |\n\r")
+                    self._ser.write("+---+-------------------------------------------------------------------+\n\r")
+                    self._ser.write("\n\r")
+                    self._ser.write(">: ")
+
+                    break
+
                 self._state = S1_CMD
 
             # -----------------------
@@ -213,10 +226,10 @@ class task_user:
                         self._state = S9_LINEFOLLOW
 
                     elif inChar in {"\r", "\n"}:
-                        self._ser.write(UI_prompt)
-
                         while self._ser.any():
                             self._ser.read(None)
+                        
+                        self._state = S0_PROMPT
 
             # -----------------------
             # S2_HELP: display help, wait for Enter
@@ -238,8 +251,7 @@ class task_user:
                             break
                     yield
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S3_GAINS: prompt for motor and line following Kp and Ki (uses multichar_input)
@@ -320,8 +332,8 @@ class task_user:
                 self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
                 if not self._save_gains():
                     self._ser.write(f"Warning: failed to save {GAINS_FILE}.\r\n")
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+
+                self._state = S0_PROMPT
 
             # -----------------------
             # S4_SETPOINT: prompt for setpoints (uses multichar_input)
@@ -351,8 +363,7 @@ class task_user:
 
                 self._save_gains()
 
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S5_COLLECT: wait while data collection runs
@@ -384,8 +395,7 @@ class task_user:
                     )
                 else:
                     self._ser.write(f"{CSV_END}\r\n")
-                    self._ser.write(UI_prompt)
-                    self._state = S1_CMD
+                    self._state = S0_PROMPT
 
 
             # -----------------------
@@ -428,8 +438,7 @@ class task_user:
                 """
 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S8_CALIBRATE: calibration state
@@ -449,8 +458,7 @@ class task_user:
 
                 # If NO selected, return to main menu from this point
                 if inChar in {"n", "N"}:
-                    self._ser.write(UI_prompt)
-                    self._state = S1_CMD
+                    self._state = S0_PROMPT
 
                     yield 0
                     continue
@@ -499,8 +507,7 @@ class task_user:
                 self._ser.write('Sensor calibration complete.\r\n')
 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S9_LINEFOLLOW: Line Following State
@@ -563,8 +570,7 @@ class task_user:
 
                 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             #Need to import a logging thing which we can then graph.
 

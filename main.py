@@ -107,6 +107,13 @@ lineFollowSetPoint  = Share("f", name="Line Follow Set Point")
 lineFollowKp        = Share("f", name="Line Follow Kp Gain")
 lineFollowKi        = Share("f", name="Line Follow Ki Gain")
 
+lineFollowKp.put(75)
+lineFollowKi.put(25)
+leftMotorKp.put(0.05)
+rightMotorKp.put(0.05)
+leftMotorKi.put(0.6)
+rightMotorKi.put(0.6)
+
 # Reflectance sensor array shares
 #  Mode:
 #   - 0: Idle
