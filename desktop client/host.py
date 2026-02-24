@@ -21,8 +21,8 @@ S2_STEP_TEST = 2
 S3_CIRCLE_LOG = 3
 
 # Device identification (adjust to your target)
-DEFAULT_PID = 38912
-DEFAULT_VID = 61525
+DEFAULT_PID = 14155   # STM32 STLink VCP (0x374B)
+DEFAULT_VID = 1155    # STMicroelectronics (0x0483)
 
 # Reusable UI text
 UI_prompt = """\r\n
@@ -54,7 +54,6 @@ def main():
         state = S0_INIT
 
         while True:
-
             if state == S0_INIT:
                 print(UI_prompt)
                 state = S1_CMD

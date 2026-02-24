@@ -100,10 +100,10 @@ class task_user:
         self._rightMotorKi = rightMotorKi          # type: Share
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
 
-        # Serial interface (USB virtual COM port)
-        self._ser = USB_VCP()                       # type: USB_VCP
-        # Serial interface (UART over bluetooth HC-05)
-        # self._ser = UART(3, 115200)
+        # Serial interface for host UI over ST-Link VCP (UART2)
+        self._ser = UART(2, 115200)                 # type: UART
+        # Serial interface (USB virtual COM port / REPL-side UI)
+        # self._ser = USB_VCP()                     # type: USB_VCP
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
@@ -504,6 +504,10 @@ class task_user:
 
                 # Wait for newline or carriage return, non-blocking (yielding)
                 while True:
+                                        # Print one sample (time, data) per iteration
+                    self._ser.write(
+                        f"{self._timeValues.get()},{self._dataValues.get()}\r\n"
+                    )
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
                         if inChar in {"\r", "\n"}:
