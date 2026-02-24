@@ -6,12 +6,11 @@ except ImportError:
     import json
 from constants import GAINS_FILE
 
-SPEED = 70
-
 class task_line_follow:
     def __init__(
             self,
             lineFollowGo:       Share,
+            lineFollowSetPoint: Share,
             lineFollowKp:       Share,
             lineFollowKi:       Share,
             lineCentroid:       Share,
@@ -23,11 +22,15 @@ class task_line_follow:
 
         self._goFlag              = lineFollowGo
 
+        self._setPoint            = lineFollowSetPoint
+
         self._Kp                  = lineFollowKp
 
         self._Ki                  = lineFollowKi
 
         self._lineCentroid        = lineCentroid
+
+        self._nominalSetPoint     = 0
 
         self._rightMotorSetPoint  = rightMotorSetPoint
 
@@ -62,11 +65,17 @@ class task_line_follow:
         line_follower = data.get("line_follower", {})
         lf_kp = line_follower.get("kp")
         lf_ki = line_follower.get("ki")
+        lf_setpoint = line_follower.get("set_point")
 
         if lf_kp is not None:
             self._Kp.put(float(lf_kp))
+            print(f"Read LF Kp: {float(lf_kp)}")
         if lf_ki is not None:
             self._Ki.put(float(lf_ki))
+            print(f"Read LF Ki: {float(lf_ki)}")
+        if lf_setpoint is not None:
+            self._nominalSetPoint = float(lf_setpoint)
+            print(f"Read LF setpoint: {float(lf_setpoint)}")
 
         return True
 
@@ -81,6 +90,9 @@ class task_line_follow:
                 if not(oldGo):
                     self._controller.Kp = self._Kp.get()
                     self._controller.Ki = self._Ki.get()
+                    self._nominalSetPoint = self._setPoint.get()
+                    self._controller.reset()
+                    
                     oldGo = True
                 
                 # Run line follower PI control
@@ -95,5 +107,5 @@ class task_line_follow:
 
     def plant_cb(self, value):
         # print(f'{self._count} - Plant rx value: {value:.3f}')
-        self._leftMotorSetPoint.put(SPEED + value)
-        self._rightMotorSetPoint.put(SPEED - value)
+        self._leftMotorSetPoint.put(self._nominalSetPoint + value)
+        self._rightMotorSetPoint.put(self._nominalSetPoint - value)

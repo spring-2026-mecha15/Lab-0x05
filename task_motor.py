@@ -104,8 +104,10 @@ class task_motor:
 
         if motor_kp is not None:
             self._kpVal.put(float(motor_kp))
+            print(f"Read motor Kp: {float(motor_kp)}")
         if motor_ki is not None:
             self._kiVal.put(float(motor_ki))
+            print(f"Read motor Ki: {float(motor_ki)}")
 
         return True
         
