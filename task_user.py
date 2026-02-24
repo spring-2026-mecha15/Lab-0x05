@@ -526,6 +526,7 @@ class task_user:
                 self._ser.write(UI_prompt)
                 self._state = S1_CMD
 
+            #Need to import a logging thing which we can then graph.
 
             # Yield the current state per scheduler convention
             yield self._state
