@@ -1,1 +1,5 @@
 __pycache__/
+.venv/
+desktop client/data/
+desktop client/__pycache__/
+__pycache__/constants.cpython-314.pyc
