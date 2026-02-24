@@ -1,6 +1,7 @@
-from task_share import Share
+from task_share import Share, Queue
 from drivers.reflectance import Reflectance_Sensor
 import micropython
+from utime import ticks_us, ticks_diff
 
 S0_IDLE        = micropython.const(0)
 S1_CALIB_DARK  = micropython.const(1)
@@ -13,7 +14,9 @@ class task_reflectance:
             reflectanceSensor: Reflectance_Sensor,
             reflectanceMode: Share,
             lineCentroid:  Share,
-            lineFound:     Share
+            lineFound:     Share,
+            centroidValues: Queue,
+            centroidTimeValues: Queue
         ):
         
         self._state = 0
@@ -25,6 +28,12 @@ class task_reflectance:
         self._lineCentroid = lineCentroid
 
         self._lineFound = lineFound
+
+        self._centroidValues = centroidValues
+
+        self._centroidTimeValues = centroidTimeValues
+
+        self._runStartTime = 0
 
         print("Reflectance sensor instantiated")
 
@@ -40,6 +49,7 @@ class task_reflectance:
                 elif mode == 2:
                     self._state = S2_CALIB_LIGHT
                 elif mode == 3:
+                    self._runStartTime = ticks_us()
                     self._state = S3_RUN
                 
                 else:
@@ -88,6 +98,11 @@ class task_reflectance:
                 # If running, get latest centroid and put into share
                 centroid = self._sensor.get_centroid()
                 self._lineCentroid.put(centroid)
+
+                # Log centroid vs time without blocking if queues fill up
+                if (not self._centroidValues.full()) and (not self._centroidTimeValues.full()):
+                    self._centroidValues.put(centroid)
+                    self._centroidTimeValues.put(int(ticks_diff(ticks_us(), self._runStartTime) / 1000))
 
 
             yield self._state

@@ -95,6 +95,10 @@ rightMotorKi       = Share("f", name="Right Mot. Ki Gain")
 dataValues = Queue("f", 50, name="Data Collection Buffer")
 timeValues = Queue("L", 50, name="Time Buffer")
 
+# Centroid logging buffers (for line-follow plotting)
+centroidValues = Queue("f", 500, name="Centroid Buffer")
+centroidTimeValues = Queue("L", 500, name="Centroid Time Buffer")
+
 # Line following sensor shares
 lineCentroid        = Share("f", name="Line Centroid Val")
 lineFound           = Share("B", name="Line Found Flag") # For future use
@@ -130,6 +134,7 @@ userTask = task_user(
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues,
+    centroidValues, centroidTimeValues,
     reflectanceMode,
     lineFollowGo, lineFollowKp, lineFollowKi, lineCentroid
     )
@@ -149,7 +154,9 @@ reflectanceTask = task_reflectance(
     reflectanceSensor,
     reflectanceMode,
     lineCentroid,
-    lineFound
+    lineFound,
+    centroidValues,
+    centroidTimeValues
 )
 
 

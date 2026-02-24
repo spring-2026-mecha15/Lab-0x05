@@ -12,13 +12,14 @@ Note: This runs on a host computer (CPython) and is not for MicroPython.
 """
 import sys
 from serial.tools import list_ports
-from UI_Functions import run_step_test, run_circle_log_placeholder
+from UI_Functions import run_step_test, run_circle_log_placeholder, run_debug_mode
 
 # FSM states
 S0_INIT = 0
 S1_CMD = 1
 S2_STEP_TEST = 2
 S3_CIRCLE_LOG = 3
+S4_DEBUG_MODE = 4
 
 # Device identification (adjust to your target)
 DEFAULT_PID = 14155   # STM32 STLink VCP (0x374B)
@@ -29,6 +30,7 @@ UI_prompt = """\r\n
 +-----------------------------------------+\r
 | ME 405 Romi Desktop CLI.                |\r
 +---+-------------------------------------+\r
+| d | Debug (Print RX)                    |\r
 | l | Circle Log                          |\r
 | s | Run Step Test                       |\r
 +---+-------------------------------------+\r\n\r"""
@@ -62,10 +64,12 @@ def main():
                 cmd = input(">: ").strip().lower()
                 if cmd == "s":
                     state = S2_STEP_TEST
+                elif cmd == "d":
+                    state = S4_DEBUG_MODE
                 elif cmd == "l":
                     state = S3_CIRCLE_LOG
                 else:
-                    print("Unknown command. Use s or l. (Ctrl-C to exit)")
+                    print("Unknown command. Use d, s or l. (Ctrl-C to exit)")
                     state = S1_CMD
 
             elif state == S2_STEP_TEST:
@@ -74,6 +78,10 @@ def main():
 
             elif state == S3_CIRCLE_LOG:
                 run_circle_log_placeholder(com_port)
+                state = S0_INIT
+
+            elif state == S4_DEBUG_MODE:
+                run_debug_mode(com_port)
                 state = S0_INIT
 
     except KeyboardInterrupt:

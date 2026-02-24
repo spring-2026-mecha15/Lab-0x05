@@ -85,8 +85,6 @@ def run_step_test(com_port):
                 print("\r\nSerial open error:", e)
             return 1
 
-        # Send Ctrl-C + Ctrl-D to soft reset the board
-        ser.write(b'\x03\x04')
         print("connected!")
 
         # -------------------------
@@ -202,8 +200,6 @@ def run_circle_log_placeholder(com_port):
                 print("\r\nSerial open error:", e)
             return 1
 
-        # Send Ctrl-C + Ctrl-D to soft reset the board
-        ser.write(b'\x03\x04')
         print("connected!")
 
         # -------------------------
@@ -243,7 +239,41 @@ def run_circle_log_placeholder(com_port):
 
     except KeyboardInterrupt:
         print("\nCircle log cancelled. Returning to menu.")
-        ser.write(b'\x03\x04')
+        ser.write(b'\x03')
+        return 1
+
+    finally:
+        if ser is not None and ser.is_open:
+            try:
+                ser.close()
+            except Exception:
+                pass
+
+
+def run_debug_mode(com_port):
+    ser = None
+    try:
+        try:
+            ser = serial.Serial(com_port, baudrate=BAUDRATE, timeout=1.0)
+        except SerialException as e:
+            msg = e.args[0] if e.args else str(e)
+            if "PermissionError" in msg or "Access is denied" in msg:
+                print("\r\nRomi found, but already in use!")
+            else:
+                print("\r\nSerial open error:", e)
+            return 1
+
+        print("\nDebug mode active. Printing all received serial data. Ctrl-C to return.\n")
+        while True:
+            raw = ser.readline()
+            if not raw:
+                continue
+            text = raw.decode(errors="ignore")
+            if text:
+                print(text, end="")
+
+    except KeyboardInterrupt:
+        print("\nDebug mode cancelled. Returning to menu.")
         return 1
 
     finally:

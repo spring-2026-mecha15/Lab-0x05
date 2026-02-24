@@ -68,6 +68,8 @@ class task_user:
         rightMotorSetPoint,    # type: Share
         dataValues,            # type: Queue
         timeValues,            # type: Queue
+        centroidValues,        # type: Queue
+        centroidTimeValues,    # type: Queue
         reflectanceMode,       # type: Share
         lineFollowGo,          # type: Share
         lineFollowKp,          # type: Share
@@ -101,13 +103,15 @@ class task_user:
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
 
         # Serial interface for host UI over ST-Link VCP (UART2)
-        self._ser = UART(2, 115200)                 # type: UART
+        self._UART = UART(2, 115200)               # type: UART
         # Serial interface (USB virtual COM port / REPL-side UI)
-        # self._ser = USB_VCP()                     # type: USB_VCP
+        self._ser = USB_VCP()                       # type: USB_VCP
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
         self._timeValues = timeValues               # type: Queue
+        self._centroidValues = centroidValues       # type: Queue
+        self._centroidTimeValues = centroidTimeValues  # type: Queue
 
         # Shares for reflectance sensor
         self._reflectanceMode = reflectanceMode     # type: Share
@@ -504,10 +508,15 @@ class task_user:
 
                 # Wait for newline or carriage return, non-blocking (yielding)
                 while True:
-                                        # Print one sample (time, data) per iteration
-                    self._ser.write(
-                        f"{self._timeValues.get()},{self._dataValues.get()}\r\n"
-                    )
+
+                    # Stream centroid CSV rows over UART when queued samples exist
+                    if self._centroidTimeValues.any() and self._centroidValues.any():
+                        self._UART.write(
+                            f"{self._centroidTimeValues.get()},{self._centroidValues.get()}\r\n"
+                        )
+
+
+
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
                         if inChar in {"\r", "\n"}:
