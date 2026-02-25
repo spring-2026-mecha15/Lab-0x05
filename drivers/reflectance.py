@@ -16,7 +16,7 @@ class Reflectance_Sensor:
     """
 
     _CALIBRATION_FILE = "ir_calibration.json"
-    _SAMPLE_COUNT = 20
+    _SAMPLE_COUNT = 100
     _SAMPLE_PERIOD_MS = 10
     _READ_SAMPLES = 5  # Number of raw reads to average in get_values()
     
