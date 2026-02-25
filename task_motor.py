@@ -105,9 +105,15 @@ class task_motor:
         if motor_kp is not None:
             self._kpVal.put(float(motor_kp))
             print(f"Read motor Kp: {float(motor_kp)}")
+        else:
+            self._kpVal.put()
+            print(f"Motor Kp not found. Using default: {DEFAULT_MOTOR_KP}")
         if motor_ki is not None:
             self._kiVal.put(float(motor_ki))
             print(f"Read motor Ki: {float(motor_ki)}")
+        else:
+            self._kiVal.put()
+            print(f"Motor Ki not found. Using default: {DEFAULT_MOTOR_KI}")
 
         return True
         
@@ -168,24 +174,25 @@ class task_motor:
                 # Update encoder before measuring velocity
                 self._enc.update()
                 self._controller.run()
-                """
-                # pos = self._enc.get_position()
-                vel = self._enc.get_velocity()
+                
+                # """
+                # # pos = self._enc.get_position()
+                # vel = self._enc.get_velocity()
 
-                # print('position: ', pos, ', delta:', self._enc.delta, ', dt:', self._enc.dt, ', vel:', vel)
+                # # print('position: ', pos, ', delta:', self._enc.delta, ', dt:', self._enc.dt, ', vel:', vel)
                 
-                # Store the sampled values in the queues
-                # self._dataValues.put(pos)
-                self._dataValues.put(vel)                                   # Store velocity to be reported to output
-                self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
+                # # Store the sampled values in the queues
+                # # self._dataValues.put(pos)
+                # self._dataValues.put(vel)                                   # Store velocity to be reported to output
+                # self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
                 
-                # When the queues are full, data collection is over
-                if self._dataValues.full():
-                    # print("Exiting motor loop")
-                    self._state = S1_WAIT
-                    self._goFlag.put(False)
-                    self._mot.disable()
-                """
+                # # When the queues are full, data collection is over
+                # if self._dataValues.full():
+                #     # print("Exiting motor loop")
+                #     self._state = S1_WAIT
+                #     self._goFlag.put(False)
+                #     self._mot.disable()
+                # """
 
 
             

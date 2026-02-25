@@ -96,8 +96,8 @@ dataValues = Queue("f", 50, name="Data Collection Buffer")
 timeValues = Queue("L", 50, name="Time Buffer")
 
 # Centroid logging buffers (for line-follow plotting)
-centroidValues = Queue("f", 500, name="Centroid Buffer")
-centroidTimeValues = Queue("L", 500, name="Centroid Time Buffer")
+centroidValues = Queue("f", 50, name="Centroid Buffer")
+centroidTimeValues = Queue("L", 50, name="Centroid Time Buffer")
 
 # Line following sensor shares
 lineCentroid        = Share("f", name="Line Centroid Val")
@@ -106,6 +106,7 @@ lineFollowGo        = Share("B", name="Line Follow Go Flag")
 lineFollowSetPoint  = Share("f", name="Line Follow Set Point")
 lineFollowKp        = Share("f", name="Line Follow Kp Gain")
 lineFollowKi        = Share("f", name="Line Follow Ki Gain")
+lineFollowKff       = Share("f", name="Line Follow Kff Gain")
 
 lineFollowKp.put(0.53)
 lineFollowKi.put(0.17)
@@ -144,7 +145,8 @@ userTask = task_user(
     dataValues, timeValues,
     centroidValues, centroidTimeValues,
     reflectanceMode,
-    lineFollowGo, lineFollowSetPoint, lineFollowKp, lineFollowKi, lineCentroid
+    lineFollowGo, lineFollowSetPoint, lineFollowKp,
+    lineFollowKi, lineCentroid, lineFollowKff
     )
 
 # Create a line follower control instance
@@ -154,6 +156,7 @@ lineFollowTask = task_line_follow(
     lineFollowKp,
     lineFollowKi,
     lineCentroid,
+    lineFollowKff,
     rightMotorSetPoint,
     leftMotorSetPoint
 )
@@ -204,6 +207,7 @@ while True:
         print("Program Terminating")
         leftMotor.disable()
         rightMotor.disable()
+        del userTask
         break
 
 # Print final statistics and status information

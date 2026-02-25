@@ -4,7 +4,7 @@ try:
     import ujson as json
 except ImportError:
     import json
-from constants import GAINS_FILE
+from constants import GAINS_FILE, DEFAULT_LF_KP, DEFAULT_LF_KI, DEFAULT_LF_KFF
 
 class task_line_follow:
     def __init__(
@@ -14,6 +14,7 @@ class task_line_follow:
             lineFollowKp:       Share,
             lineFollowKi:       Share,
             lineCentroid:       Share,
+            lineFollowKff:      Share,
             rightMotorSetPoint: Share,
             leftMotorSetPoint:  Share
         ):
@@ -29,6 +30,8 @@ class task_line_follow:
         self._Ki                  = lineFollowKi
 
         self._lineCentroid        = lineCentroid
+
+        self._Kff                 = lineFollowKff
 
         self._nominalSetPoint     = 0
 
@@ -66,16 +69,31 @@ class task_line_follow:
         lf_kp = line_follower.get("kp")
         lf_ki = line_follower.get("ki")
         lf_setpoint = line_follower.get("set_point")
+        lf_kff = line_follower.get("kff")
 
         if lf_kp is not None:
             self._Kp.put(float(lf_kp))
             print(f"Read LF Kp: {float(lf_kp)}")
+        else:
+            self._Kp.put(DEFAULT_LF_KP)
+            print(f"LF Kp not found. Using default: {DEFAULT_LF_KP}")
         if lf_ki is not None:
             self._Ki.put(float(lf_ki))
             print(f"Read LF Ki: {float(lf_ki)}")
+        else:
+            self._Ki.put(DEFAULT_LF_KI)
+            print(f"LF Ki not found. Using default: {DEFAULT_LF_KI}")
         if lf_setpoint is not None:
             self._nominalSetPoint = float(lf_setpoint)
             print(f"Read LF setpoint: {float(lf_setpoint)}")
+
+        if lf_kff is not None:
+            self._Kff.put(lf_kff)
+            print(f"Read LF Kff: {float(lf_kff)}")
+        else:
+            self._Ki.put(DEFAULT_LF_KFF)
+            print(f"LF Kff not found. Using default: {DEFAULT_LF_KFF}")
+        
 
         return True
 
@@ -96,7 +114,7 @@ class task_line_follow:
                     radius = 300 # radius of test circle in mm
                     omega = self._nominalSetPoint / radius
 
-                    self._controller.set_feed_forward(omega, 0.5)
+                    self._controller.set_feed_forward(omega, self._Kff.get())
 
                     self._controller.reset()
                     

@@ -13,11 +13,15 @@ from pyb import USB_VCP, UART, ADC, Pin
 from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
-from constants import CSV_BEGIN, CSV_END, GAINS_FILE
+from constants import CSV_BEGIN, CSV_END, GAINS_FILE, BATT_ADC
 try:
     import ujson as json
 except ImportError:
     import json
+
+from pyb import I2C
+from drivers.imu import BNO055
+import time
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_PROMPT = micropython.const(0)          # Initial state: print prompt
@@ -75,7 +79,8 @@ class task_user:
         lineFollowSetPoint,    # type: Share
         lineFollowKp,          # type: Share
         lineFollowKi,          # type: Share
-        lineCentroid           # type: Share
+        lineCentroid,          # type: Share
+        lineFollowKff          # type: Share
     ):
         """
         Initialize the UI task.
@@ -116,6 +121,7 @@ class task_user:
         self._lineFollowKp = lineFollowKp           # type: Share
         self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
+        self._lineFollowKff = lineFollowKff         # type: Share
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -132,7 +138,8 @@ class task_user:
             "line_follower": {
                 "kp": self._lineFollowKp.get(),
                 "ki": self._lineFollowKi.get(),
-                "set_point": self._lineFollowSetPoint.get()
+                "set_point": self._lineFollowSetPoint.get(),
+                "kff": self._lineFollowKff.get()
             },
         }
 
@@ -227,7 +234,7 @@ class task_user:
 
                     elif inChar in {"\r", "\n"}:
                         while self._ser.any():
-                            self._ser.read(None)
+                            self._ser.read(1)
                         
                         self._state = S0_PROMPT
 
@@ -324,12 +331,29 @@ class task_user:
                 else:
                     self._ser.write("No value entered. LF Ki gains unchanged.\r\n")
 
+                # Prompt and read new LF feed forward gain
+                self._ser.write(
+                    f"\r\nCurrent LF Kff gain: {self._lineFollowKff.get():.2f}\r\n"
+                )
+                self._ser.write("Enter a new LF Kff gain value:\r\n->: ")
+                value = yield from multichar_input(self._ser)
+
+                if value is not None:
+                    if value < 0:
+                        self._ser.write("Invalid LF Kff gain (< 0). LF Kff gain unchanged")
+                    else:
+                        self._lineFollowKff.put(value)
+                        self._ser.write(f"LF Kff Gain Set To: {value}\r\n")
+                else:
+                    self._ser.write("No value entered. LF Kff gain unchanged.\r\n")
+
                 # Show final values and return to prompt
                 self._ser.write("\r\nController gains:\r\n")
                 self._ser.write(f" - Motor Kp: {self._leftMotorKp.get():.2f}\r\n")
                 self._ser.write(f" - Motor Ki: {self._leftMotorKi.get():.2f}\r\n")
                 self._ser.write(f" - Line follower Kp: {self._lineFollowKp.get():.2f}\r\n")
                 self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
+                self._ser.write(f" - Line follower Kff: {self._lineFollowKff.get():.2f}\r\n")
                 if not self._save_gains():
                     self._ser.write(f"Warning: failed to save {GAINS_FILE}.\r\n")
 
@@ -404,38 +428,79 @@ class task_user:
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
+                ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
-                """
-                raw, calibrated, value = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
+                ############################################
+                # raw, calibrated, value = self._reflectanceSensor.get_values()
+                # self._ser.write(f" RAW   CALIBRATED  \r\n")
+                # for i in range(len(raw)):
+                #     self._ser.write(f"{raw[i]}")
+                #     self._ser.write('   ')
+                #     for _ in range(int(calibrated[i]*10)):
+                #         self._ser.write('+')
+                #     self._ser.write("\r\n")
 
-                self._ser.write(f"Measured value: {value:.2f}\r\n")
-                """
-                """
-                self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-                """
+                # self._ser.write(f"Measured value: {value:.2f}\r\n")
+                # """
+                # """
+                # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
+                # value = yield from multichar_input(self._ser)
+                ############################################
 
-                # BATTERY DROOP COMPENSATION
-                """
-                adcVal = self._battAdc.read()
+                ############################################
+                # # BATTERY DROOP COMPENSATION
+                ############################################
+                # adcVal = self._battAdc.read()
 
-                adcVoltage = (adcVal / 4096 * 3.3)
+                # adcVoltage = (adcVal / 4096 * 3.3)
 
-                # Scale for 4.7k and 10k voltage divider
-                battVoltage = adcVoltage / 0.305
+                # # Scale for 4.7k and 10k voltage divider
+                # battVoltage = adcVoltage / 0.305
 
-                # Calculate scaling factor
-                effortScale = 6.5 / battVoltage
+                # # Calculate scaling factor
+                # effortScale = 6.5 / battVoltage
 
-                self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
-                """
+                # self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
+                ############################################
+
+
+                ############################################
+                # BATTERY LEVEL
+                ############################################
+                # # --- Scale value to account for battery droop
+                # adcVoltage = ADC(BATT_ADC).read() / 4096 * 3.3
+
+                # # Scale for 4.7k and 10k voltage divider.
+                # # (Slightly tweaked to account for actual VDD)
+                # battVoltage = adcVoltage / 0.305
+
+                # self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n")
+
+
+                ############################################
+                # IMU
+                ############################################
+                i2c1 = I2C(1, baudrate=100000)
+                imu = BNO055(i2c1)
+
+                self._ser.write(f"{time.ticks_ms()}\r\n")
+                yield from imu.begin()
+
+                self._ser.write(f"{time.ticks_ms()}\r\n")
+                self._ser.write("IMU initialized.\r\n")
+
+                calib_check = imu.calibration_status()
+                self._ser.write(f"System calib: {calib_check[0]}\r\n")
+                self._ser.write(f"Gyro calib: {calib_check[1]}\r\n")
+                self._ser.write(f"Accel calib: {calib_check[2]}\r\n")
+                self._ser.write(f"Magnetometer calib: {calib_check[3]}\r\n")
+
+                # self._ser.write(f'Accel: {imu.acceleration()}\r\n')
+                # self._ser.write(f'Gyro: {imu.gyro()}\r\n')
+                # self._ser.write(f'Temp: {imu.temperature_c()}\r\n')
+
+
+                
 
                 # Return to main prompt
                 self._state = S0_PROMPT
@@ -518,19 +583,9 @@ class task_user:
 
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
-
-                # Configure motor control params
-                self._leftMotorKi.put(0.6)
-                self._rightMotorKi.put(0.6)
-
-                self._leftMotorKp.put(0.02)
-                self._rightMotorKp.put(0.02)
-
-                self._leftMotorSetPoint.put(0)
-                self._rightMotorSetPoint.put(0)
-
                 self._leftMotorGo.put(1)
                 self._rightMotorGo.put(1)
+                yield # Let sensor array pick up the change
 
                 # Enable line following controller
                 self._lineFollowGo.put(1)
@@ -561,6 +616,7 @@ class task_user:
                     
                 # Stop line-following mode and related tasks before returning.
                 self._ser.write(f"{CSV_END}\r\n")
+
                 self._lineFollowGo.put(0)
                 self._reflectanceMode.put(0)
                 self._leftMotorGo.put(0)
@@ -576,3 +632,7 @@ class task_user:
 
             # Yield the current state per scheduler convention
             yield self._state
+
+
+    def __del__(self, instance):
+        self._ser.write("Program terminated.")

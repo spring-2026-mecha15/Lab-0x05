@@ -1,0 +1,9 @@
+GAINS
+
+
+Line follow at 300mm/s
+Motor Kp: 0.05
+Motor Ki: 0.60
+Line Follower Kp: 0.70
+Line Follower Ki: 0.08
+Line Follower Kff: 0.50

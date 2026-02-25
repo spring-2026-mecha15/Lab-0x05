@@ -59,6 +59,12 @@ CSV_END = '>>>>CSV END<<<<'
 
 GAINS_FILE = "gains.json"
 
+DEFAULT_MOTOR_KP  = 0.05
+DEFAULT_MOTOR_KI  = 0.60
+DEFAULT_LF_KP     = 0.53
+DEFAULT_LF_KI     = 0.17
+DEFAULT_LF_KFF    = 0.5
+
 # # Typical main.py setup:
 # from pyb import Timer
 # from drivers.motor import Motor
