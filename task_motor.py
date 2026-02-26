@@ -86,6 +86,8 @@ class task_motor:
         self._ki_init = self._kiVal.get()
         self._controller.Kp = self._kp_init
         self._controller.Ki = self._ki_init
+
+        self._profiling = False
         
         print("Motor Task object instantiated")
 
@@ -127,7 +129,14 @@ class task_motor:
                 self._state = S1_WAIT
                 
             elif self._state == S1_WAIT: # Wait for "go command" state
-                if self._goFlag.get():
+                go = self._goFlag.get()
+
+                if go == 2:
+                    self._profiling = True
+                else:
+                    self._profiling = False
+
+                if go:
                     # print("Starting motor loop")
                     
                     # Capture a start time in microseconds so that each sample
@@ -143,6 +152,7 @@ class task_motor:
                     self._controller.set_point = self._setpoint.get()
                     self._controller.Kp = self._kpVal.get()
                     self._controller.Ki = self._kiVal.get()
+
 
                 
             elif self._state == S2_RUN: # Closed-loop control state
@@ -173,16 +183,13 @@ class task_motor:
                 self._enc.update()
                 self._controller.run()
                 
-                # """
-                # # pos = self._enc.get_position()
-                vel = self._enc.get_velocity()
+                if self._profiling:
+                    vel = self._enc.get_velocity()
 
-                # # print('position: ', pos, ', delta:', self._enc.delta, ', dt:', self._enc.dt, ', vel:', vel)
-                
-                # # Store the sampled values in the queues
-                # # self._dataValues.put(pos)
-                self._dataValues.put(vel)                                   # Store velocity to be reported to output
-                self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
+                    # # Store the sampled values in the queues
+                    # # self._dataValues.put(pos)
+                    self._dataValues.put(vel)                                   # Store velocity to be reported to output
+                    self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
                 
                 ######################
                 ## NOTE: This has been moved to user task

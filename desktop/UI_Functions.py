@@ -32,13 +32,14 @@ class VelocityConfig:
 configs = [
     # VelocityConfig(50, 0.04, 0.2),
     # VelocityConfig(50, 0.04, 0.4),
-    VelocityConfig(75, 0.01, 0.8),
-    # VelocityConfig(75, 0.04, 0.6),
-    VelocityConfig(75, 0.05, 0.8),
-    # VelocityConfig(75, 0.08, 0.6),
-    VelocityConfig(75, 0.10, 0.8),
-    # VelocityConfig(75, 0.12, 0.6),
-    VelocityConfig(75, 0.20, 0.8),
+    # VelocityConfig(75, 0.20, 0.0),
+    # VelocityConfig(75, 0.25, 0.0),
+    # VelocityConfig(75, 0.30, 0.0),
+    # VelocityConfig(75, 0.1, 4.0),
+    VelocityConfig(75, 0.14, 4.0),
+    VelocityConfig(75, 0.15, 4.0),
+    VelocityConfig(75, 0.16, 4.0),
+    # VelocityConfig(75, 0.2, 4.0),
     # VelocityConfig(50, 0.10, 0.6),
     # VelocityConfig(50, 0.04, 0.8),
     # VelocityConfig(50, 0.04, 1.0),
@@ -85,6 +86,7 @@ def run_step_test(com_port):
                 print("\r\nSerial open error:", e)
             return 1
 
+        time.sleep(3) # Allow romi to wakeup
         print("connected!")
 
         # -------------------------
@@ -117,11 +119,23 @@ def run_step_test(com_port):
             ser.write(b'k')
             # Write Kp and Ki values followed by newline
             ser.write(f'{kp:.3f}\n'.encode('ascii'))
+            time.sleep(0.05)
             ser.write(f'{ki:.3f}\n'.encode('ascii'))
+            time.sleep(0.05)
+            ser.write(b'\n') # skip lf kp
+            time.sleep(0.05)
+            ser.write(b'\n') # skip lf ki
+            time.sleep(0.05)
+            ser.write(b'\n') # skip lf kff
+
+            time.sleep(0.05)
 
             # Enter setpoint menu
             ser.write(b's')
             ser.write(f'{setpoint:.3f}\n'.encode('ascii'))
+            time.sleep(0.05)
+            ser.write(b'\n') # skip lf setpoint
+            time.sleep(0.05)
 
             # Trigger test run (originally 'g')
             ser.write(b'g')

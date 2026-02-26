@@ -145,7 +145,8 @@ userTask = task_user(
     centroidValues, centroidTimeValues,
     reflectanceMode,
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
-    lineFollowKi, lineCentroid, lineFollowKff
+    lineFollowKi, lineCentroid, lineFollowKff,
+    reflectanceSensor
     )
 
 # Create a line follower control instance
