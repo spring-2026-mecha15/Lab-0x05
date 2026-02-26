@@ -53,12 +53,11 @@ S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
 
 
 class task_user:
-    """
-    UI task class used by the cooperative scheduler.
+    # UI task class used by the cooperative scheduler.
 
-    The `run()` method is a generator that yields the current state each
-    iteration so it can cooperate with cotask scheduler semantics.
-    """
+    # The `run()` method is a generator that yields the current state each
+    # iteration so it can cooperate with cotask scheduler semantics.
+    
 
     def __init__(
         self,
@@ -82,9 +81,6 @@ class task_user:
         lineCentroid,          # type: Share
         lineFollowKff          # type: Share
     ):
-        """
-        Initialize the UI task.
-        """
 
         # State machine
         self._state = S0_PROMPT  # current state (int)
@@ -152,13 +148,12 @@ class task_user:
         return True
 
     def run(self):
-        """
-        Generator for the task's behavior.
+        # Generator for the task's behavior.
 
-        Yields:
-            current state (int) at the end of each loop iteration so the
-            cooperative scheduler can manage it.
-        """
+        # Yields:
+        #     current state (int) at the end of each loop iteration so the
+        #     cooperative scheduler can manage it.
+        
         while True:
 
             # -----------------------
@@ -215,6 +210,7 @@ class task_user:
                         self._ser.write(f"{inChar}\r\n")
                         # Enable the right motor test (preserved behavior)
                         self._rightMotorGo.put(1)
+                        self._leftMotorGo.put(1)
                         self._state = S5_COLLECT
 
                     # Line Sensor Calibration

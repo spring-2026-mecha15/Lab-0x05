@@ -2,17 +2,16 @@ from utime import ticks_us, ticks_diff
 
 
 class PIController:
-    """
-    Generic PI (Proportional + Integral) controller for MicroPython.
+    # Generic PI (Proportional + Integral) controller for MicroPython.
 
-    Each `run()` call:
-        1) reads sensor
-        2) computes error and dt
-        3) updates integral (with anti-windup)
-        4) computes PI output
-        5) clamps to saturation
-        6) sends to actuator
-    """
+    # Each `run()` call:
+    #     1) reads sensor
+    #     2) computes error and dt
+    #     3) updates integral (with anti-windup)
+    #     4) computes PI output
+    #     5) clamps to saturation
+    #     6) sends to actuator
+    
 
     def __init__(
         self,

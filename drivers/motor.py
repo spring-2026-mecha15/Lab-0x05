@@ -2,34 +2,32 @@ from pyb import Pin, Timer, ADC
 
 
 class Motor:
-    """
-    Simple motor driver wrapper for a Romi-style motor driver.
+    # Simple motor driver wrapper for a Romi-style motor driver.
 
-    Responsibilities:
-      - configure a PWM channel for the motor
-      - control the direction pin
-      - control the sleep (enable) pin
-      - provide a simple set_effort(value) interface where value is in
-        -100..100 (percent). Positive values select one direction,
-        negative values select the other direction.
+    # Responsibilities:
+    #   - configure a PWM channel for the motor
+    #   - control the direction pin
+    #   - control the sleep (enable) pin
+    #   - provide a simple set_effort(value) interface where value is in
+    #     -100..100 (percent). Positive values select one direction,
+    #     negative values select the other direction.
 
-    Notes:
-      - `pwm`/`slp`/`dir` arguments may be either Pin instances or arguments
-        that the pyb.Pin constructor accepts
-    """
+    # Notes:
+    #   - `pwm`/`slp`/`dir` arguments may be either Pin instances or arguments
+    #     that the pyb.Pin constructor accepts
+    
 
     def __init__(self, pwm, tim, channel, slp, dir, battAdc):
-        """
-        Initialize motor control.
+        # Initialize motor control.
 
-        Parameters
-          pwm      -- pin identifier / pyb.Pin for PWM output (passed to Timer.channel)
-          tim      -- pyb.Timer instance used for PWM
-          channel  -- integer channel number for the timer (1..4 typically)
-          slp      -- pin identifier / pyb.Pin for sleep (enable) pin
-          dir      -- pin identifier / pyb.Pin for direction pin
-          batt_adc -- pin identifier / pyb.Pin for battery ADC
-        """
+        # Parameters
+        #   pwm      -- pin identifier / pyb.Pin for PWM output (passed to Timer.channel)
+        #   tim      -- pyb.Timer instance used for PWM
+        #   channel  -- integer channel number for the timer (1..4 typically)
+        #   slp      -- pin identifier / pyb.Pin for sleep (enable) pin
+        #   dir      -- pin identifier / pyb.Pin for direction pin
+        #   batt_adc -- pin identifier / pyb.Pin for battery ADC
+
         # Create/configure the timer channel for PWM (starts at 0% duty).
         # This mirrors the original usage of tim.channel(..., pulse_width_percent=0).
         self.pwm = tim.channel(channel, pin=pwm, mode=Timer.PWM, pulse_width_percent=0)
@@ -47,38 +45,35 @@ class Motor:
         self.set_effort(0)
 
     def enable(self):
-        """
-        Enable the motor driver by setting the SLEEP pin high.
-        """
+        # Enable the motor driver by setting the SLEEP pin high.
+
         self.sleep.high()
 
     def disable(self):
-        """
-        Disable the motor driver by setting the SLEEP pin low.
+        # Disable the motor driver by setting the SLEEP pin low.
 
-        The original implementation also set effort to zero when disabling;
-        we preserve that behavior by calling set_effort(0) first.
-        """
+        # The original implementation also set effort to zero when disabling;
+        # we preserve that behavior by calling set_effort(0) first.
+        
         # Reset PWM to zero effort before disabling (preserves original behavior).
         self.set_effort(0)
         self.sleep.low()
 
     def set_effort(self, value):
-        """
-        Set motor effort.
+        # Set motor effort.
 
-        `value` is interpreted as percent in the range -100..100 (as in the
-        original code). Positive selects one direction, negative the opposite.
-        The method writes the direction pin and then sets PWM duty to the
-        absolute magnitude of `value` (via pulse_width_percent).
+        # `value` is interpreted as percent in the range -100..100 (as in the
+        # original code). Positive selects one direction, negative the opposite.
+        # The method writes the direction pin and then sets PWM duty to the
+        # absolute magnitude of `value` (via pulse_width_percent).
 
-        The effort is capped such that 100% effort corresponds to 6.5V by
-        measuring battery voltage and applying a scale factor to the
-        effort requested
+        # The effort is capped such that 100% effort corresponds to 6.5V by
+        # measuring battery voltage and applying a scale factor to the
+        # effort requested
 
-        IMPORTANT: behavior unchanged from original code — there is no extra
-        validation/clamping here.
-        """
+        # IMPORTANT: behavior unchanged from original code — there is no extra
+        # validation/clamping here.
+        
         # Choose direction pin state:
         # - original code sets dir.low() when value > 0, else dir.high()
         if value > 0:

@@ -1,10 +1,9 @@
-"""
-Main control loop for dual-motor closed-loop control system.
+# Main control loop for dual-motor closed-loop control system.
 
-This module initializes hardware drivers, communication channels, and tasks
-for controlling two motors with encoders. It runs a real-time scheduler
-that coordinates motor control and user interface tasks.
-"""
+# This module initializes hardware drivers, communication channels, and tasks
+# for controlling two motors with encoders. It runs a real-time scheduler
+# that coordinates motor control and user interface tasks.
+
 
 # ============================================================================
 # IMPORTS

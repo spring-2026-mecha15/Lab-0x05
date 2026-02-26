@@ -19,29 +19,27 @@ S2_RUN  = micropython.const(2) # State 2 - run closed loop control
 
 
 class task_motor:
-    '''
-    A class that represents a motor task. The task is responsible for reading
-    data from an encoder, performing closed loop control, and actuating a motor.
-    Multiple objects of this class can be created to work with multiple motors
-    and encoders.
-    '''
+    # A class that represents a motor task. The task is responsible for reading
+    # data from an encoder, performing closed loop control, and actuating a motor.
+    # Multiple objects of this class can be created to work with multiple motors
+    # and encoders.
+    
 
     def __init__(self,
                  mot: Motor, enc: Encoder,
                  goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue):
-        '''
-        Initializes a motor task object
+        # Initializes a motor task object
         
-        Args:
-            mot (motor_driver): A motor driver object
-            enc (encoder):      An encoder object
-            goFlag (Share):     A share object representing a boolean flag to
-                                start data collection
-            dataValues (Queue): A queue object used to store collected encoder
-                                position values
-            timeValues (Queue): A queue object used to store the time stamps
-                                associated with the collected encoder data
-        '''
+        # Args:
+        #     mot (motor_driver): A motor driver object
+        #     enc (encoder):      An encoder object
+        #     goFlag (Share):     A share object representing a boolean flag to
+        #                         start data collection
+        #     dataValues (Queue): A queue object used to store collected encoder
+        #                         position values
+        #     timeValues (Queue): A queue object used to store the time stamps
+        #                         associated with the collected encoder data
+        
 
         self._state: int        = S0_INIT    # The present state of the task       
         
@@ -177,15 +175,18 @@ class task_motor:
                 
                 # """
                 # # pos = self._enc.get_position()
-                # vel = self._enc.get_velocity()
+                vel = self._enc.get_velocity()
 
                 # # print('position: ', pos, ', delta:', self._enc.delta, ', dt:', self._enc.dt, ', vel:', vel)
                 
                 # # Store the sampled values in the queues
                 # # self._dataValues.put(pos)
-                # self._dataValues.put(vel)                                   # Store velocity to be reported to output
-                # self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
+                self._dataValues.put(vel)                                   # Store velocity to be reported to output
+                self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
                 
+                ######################
+                ## NOTE: This has been moved to user task
+                ###################
                 # # When the queues are full, data collection is over
                 # if self._dataValues.full():
                 #     # print("Exiting motor loop")
