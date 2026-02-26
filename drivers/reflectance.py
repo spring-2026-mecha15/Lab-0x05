@@ -6,14 +6,13 @@ import utime
 
 
 class Reflectance_Sensor:
-    """
-        Driver for a reflectance sensor array read through ADC channels.
+    # Driver for a reflectance sensor array read through ADC channels.
 
-        The class provides:
-            - one-shot raw + normalized sensor reads (`get_values`)
-            - calibration file loading (`load_calibration_from_file`)
-            - cooperative calibration sampling (`calibrate`) via `yield`
-    """
+    # The class provides:
+    #     - one-shot raw + normalized sensor reads (`get_values`)
+    #     - calibration file loading (`load_calibration_from_file`)
+    #     - cooperative calibration sampling (`calibrate`) via `yield`
+    
 
     _CALIBRATION_FILE = "ir_calibration.json"
     _SAMPLE_COUNT = 100
@@ -62,15 +61,15 @@ class Reflectance_Sensor:
         return value
 
     def get_values(self):
-        """Return `(raw, calibrated, C, line_detected)` where:
-        - `raw`: list of averaged raw ADC values
-        - `calibrated`: list of normalized sensor values (0=white, 1=black)
-        - `C`: weighted line position (centroid)
-        - `line_detected`: True if line is detected, False if lost (noise/uniform)
+        # Return `(raw, calibrated, C, line_detected)` where:
+        # - `raw`: list of averaged raw ADC values
+        # - `calibrated`: list of normalized sensor values (0=white, 1=black)
+        # - `C`: weighted line position (centroid)
+        # - `line_detected`: True if line is detected, False if lost (noise/uniform)
         
-        Raw values are averaged over `_READ_SAMPLES` reads to reduce noise.
-        When line is lost, `C` returns the last valid centroid.
-        """
+        # Raw values are averaged over `_READ_SAMPLES` reads to reduce noise.
+        # When line is lost, `C` returns the last valid centroid.
+        
 
         # Use cached calibration from memory (loaded during __init__)
         calibration = self._calibration
@@ -123,11 +122,11 @@ class Reflectance_Sensor:
         return self.get_values()[2]
 
     def load_calibration_from_file(self, filename: str):
-        """Load calibration file into `self._calibration`.
+        # Load calibration file into `self._calibration`.
 
-        The on-disk format must be a list of dicts with 'dark' and
-        'light' keys (the format produced by `calibrate`).
-        """
+        # The on-disk format must be a list of dicts with 'dark' and
+        # 'light' keys (the format produced by `calibrate`).
+        
         with open(filename, "r") as fhand:
             calibration = json.load(fhand)
 
@@ -136,15 +135,14 @@ class Reflectance_Sensor:
         print(self._calibration)
 
     def calibrate(self, mode):  # "light" or "dark"
-        """
-        Cooperative calibration generator.
+        # Cooperative calibration generator.
 
-        `mode` should be `"light"` or `"dark"`. The routine collects
-        `_SAMPLE_COUNT` raw samples and stores the per-sensor average to file.
-        It yields frequently so other cotasks can continue running.
+        # `mode` should be `"light"` or `"dark"`. The routine collects
+        # `_SAMPLE_COUNT` raw samples and stores the per-sensor average to file.
+        # It yields frequently so other cotasks can continue running.
         
-        After calibration completes, the in-memory cache is updated.
-        """
+        # After calibration completes, the in-memory cache is updated.
+        
         calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
         sample_count = self._SAMPLE_COUNT

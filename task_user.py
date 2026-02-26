@@ -53,12 +53,11 @@ S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
 
 
 class task_user:
-    """
-    UI task class used by the cooperative scheduler.
+    # UI task class used by the cooperative scheduler.
 
-    The `run()` method is a generator that yields the current state each
-    iteration so it can cooperate with cotask scheduler semantics.
-    """
+    # The `run()` method is a generator that yields the current state each
+    # iteration so it can cooperate with cotask scheduler semantics.
+    
 
     def __init__(
         self,
@@ -80,11 +79,9 @@ class task_user:
         lineFollowKp,          # type: Share
         lineFollowKi,          # type: Share
         lineCentroid,          # type: Share
-        lineFollowKff          # type: Share
+        lineFollowKff,          # type: Share
+        reflectance
     ):
-        """
-        Initialize the UI task.
-        """
 
         # State machine
         self._state = S0_PROMPT  # current state (int)
@@ -101,12 +98,12 @@ class task_user:
         self._rightMotorKi = rightMotorKi          # type: Share
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
 
-        # Serial interface for host UI over ST-Link VCP (UART2)
-        # self._UART = UART(2, 115200)               # type: UART
-        # self._ser = UART(3, 115200)               # type: UART
-        self._ser = UART(3, 38400)               # type: UART
+        self._reflectanceSensor = reflectance
+
+        # Serial interface for host UI over Bluetooth (HC-05)
+        # self._ser = UART(3, 38400)               # type: UART
         # Serial interface (USB virtual COM port / REPL-side UI)
-        # self._ser = USB_VCP()                       # type: USB_VCP
+        self._ser = USB_VCP()                       # type: USB_VCP
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
@@ -152,13 +149,12 @@ class task_user:
         return True
 
     def run(self):
-        """
-        Generator for the task's behavior.
+        # Generator for the task's behavior.
 
-        Yields:
-            current state (int) at the end of each loop iteration so the
-            cooperative scheduler can manage it.
-        """
+        # Yields:
+        #     current state (int) at the end of each loop iteration so the
+        #     cooperative scheduler can manage it.
+        
         while True:
 
             # -----------------------
@@ -214,7 +210,8 @@ class task_user:
                     elif inChar in {"g", "G"}:
                         self._ser.write(f"{inChar}\r\n")
                         # Enable the right motor test (preserved behavior)
-                        self._rightMotorGo.put(1)
+                        self._rightMotorGo.put(2) # Set 2 for profiling
+                        self._leftMotorGo.put(1)  # Set 1 for just spinning (not collecting data)
                         self._state = S5_COLLECT
 
                     # Line Sensor Calibration
@@ -403,6 +400,8 @@ class task_user:
                     self._leftMotorGo.put(0)
                     self._rightMotorGo.put(0)
 
+                    yield # Let motors pick up the new command
+
                     self._ser.write("Data collection complete...\r\n")
                     self._ser.write(f"{CSV_BEGIN}\r\n")
                     self._ser.write("Time (ms), Velocity (mm/s)\r\n")
@@ -431,16 +430,16 @@ class task_user:
                 ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
                 ############################################
-                # raw, calibrated, value = self._reflectanceSensor.get_values()
-                # self._ser.write(f" RAW   CALIBRATED  \r\n")
-                # for i in range(len(raw)):
-                #     self._ser.write(f"{raw[i]}")
-                #     self._ser.write('   ')
-                #     for _ in range(int(calibrated[i]*10)):
-                #         self._ser.write('+')
-                #     self._ser.write("\r\n")
+                raw, calibrated, value = self._reflectanceSensor.get_values()
+                self._ser.write(f" RAW   CALIBRATED  \r\n")
+                for i in range(len(raw)):
+                    self._ser.write(f"{raw[i]}")
+                    self._ser.write('   ')
+                    for _ in range(int(calibrated[i]*10)):
+                        self._ser.write('+')
+                    self._ser.write("\r\n")
 
-                # self._ser.write(f"Measured value: {value:.2f}\r\n")
+                self._ser.write(f"Measured value: {value:.2f}\r\n")
                 # """
                 # """
                 # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
@@ -480,20 +479,20 @@ class task_user:
                 ############################################
                 # IMU
                 ############################################
-                i2c1 = I2C(1, baudrate=100000)
-                imu = BNO055(i2c1)
+                # i2c1 = I2C(1, baudrate=100000)
+                # imu = BNO055(i2c1)
 
-                self._ser.write(f"{time.ticks_ms()}\r\n")
-                yield from imu.begin()
+                # self._ser.write(f"{time.ticks_ms()}\r\n")
+                # yield from imu.begin()
 
-                self._ser.write(f"{time.ticks_ms()}\r\n")
-                self._ser.write("IMU initialized.\r\n")
+                # self._ser.write(f"{time.ticks_ms()}\r\n")
+                # self._ser.write("IMU initialized.\r\n")
 
-                calib_check = imu.calibration_status()
-                self._ser.write(f"System calib: {calib_check[0]}\r\n")
-                self._ser.write(f"Gyro calib: {calib_check[1]}\r\n")
-                self._ser.write(f"Accel calib: {calib_check[2]}\r\n")
-                self._ser.write(f"Magnetometer calib: {calib_check[3]}\r\n")
+                # calib_check = imu.calibration_status()
+                # self._ser.write(f"System calib: {calib_check[0]}\r\n")
+                # self._ser.write(f"Gyro calib: {calib_check[1]}\r\n")
+                # self._ser.write(f"Accel calib: {calib_check[2]}\r\n")
+                # self._ser.write(f"Magnetometer calib: {calib_check[3]}\r\n")
 
                 # self._ser.write(f'Accel: {imu.acceleration()}\r\n')
                 # self._ser.write(f'Gyro: {imu.gyro()}\r\n')

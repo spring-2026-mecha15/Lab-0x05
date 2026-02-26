@@ -7,3 +7,11 @@ Motor Ki: 0.60
 Line Follower Kp: 0.70
 Line Follower Ki: 0.08
 Line Follower Kff: 0.50
+
+
+New motor tuning (with romi mass):
+Motor Kp: 0.15
+Motor Ki: 4.0
+Line Follower Kp: 0.40
+Line Follower Ki: 0.30
+Line Follower Kff: 0.50 (for circle track, CW)
