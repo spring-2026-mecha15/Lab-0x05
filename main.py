@@ -107,12 +107,15 @@ lineFollowKp        = Share("f", name="Line Follow Kp Gain")
 lineFollowKi        = Share("f", name="Line Follow Ki Gain")
 lineFollowKff       = Share("f", name="Line Follow Kff Gain")
 
-lineFollowKp.put(0.53)
-lineFollowKi.put(0.17)
-leftMotorKp.put(0.05)
-rightMotorKp.put(0.05)
-leftMotorKi.put(0.6)
-rightMotorKi.put(0.6)
+# Load default gains
+# Note: tasks will try to read from
+# saved configuration on their first run
+lineFollowKp.put(DEFAULT_LF_KP)
+lineFollowKi.put(DEFAULT_LF_KI)
+leftMotorKp.put(DEFAULT_MOTOR_KP)
+rightMotorKp.put(DEFAULT_MOTOR_KP)
+leftMotorKi.put(DEFAULT_MOTOR_KI)
+rightMotorKi.put(DEFAULT_MOTOR_KI)
 
 # Reflectance sensor array shares
 #  Mode:

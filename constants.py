@@ -34,7 +34,8 @@ try:
     BATT_ADC = Pin.cpu.B1
 
 except ImportError:
-    print('Info: skipping pin definitions on non-STM32 device')
+    # print('Info: skipping pin definitions on non-STM32 device')
+    pass
 
 PI = 3.1415926536
 
