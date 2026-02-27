@@ -59,6 +59,7 @@ CSV_BEGIN = '>>>>CSV START<<<<'
 CSV_END = '>>>>CSV END<<<<'            
 
 GAINS_FILE = "gains.json"
+IMU_FILE = "imu.json"
 
 DEFAULT_MOTOR_KP  = 0.15
 DEFAULT_MOTOR_KI  = 4.0

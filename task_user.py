@@ -20,8 +20,9 @@ except ImportError:
     import json
 
 from pyb import I2C
-from drivers.imu import BNO055
+from drivers.imu import BNO055, OPERATION_MODE_NDOF
 import time
+import gc
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_PROMPT = micropython.const(0)          # Initial state: print prompt
@@ -34,6 +35,7 @@ S6_DISPLAY_DATA = micropython.const(6)  # Print collected CSV data
 S7_DEBUG = micropython.const(7)         # For Misc Debugging
 S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
 S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
+S10_IMU_MENU = micropython.const(10)    # IMU submenu
 
 # Reusable UI text
 # UI_prompt = "\r\n\n \
@@ -80,7 +82,14 @@ class task_user:
         lineFollowKi,          # type: Share
         lineCentroid,          # type: Share
         lineFollowKff,          # type: Share
-        reflectance
+        imuMode,               # type: Share
+        imuCalibration,        # type: Share
+        imuAx,                 # type: Share
+        imuAy,                 # type: Share
+        imuAz,                 # type: Share
+        imuGx,                 # type: Share
+        imuGy,                 # type: Share
+        imuGz                  # type: Share
     ):
 
         # State machine
@@ -97,8 +106,6 @@ class task_user:
         self._rightMotorKp = rightMotorKp          # type: Share
         self._rightMotorKi = rightMotorKi          # type: Share
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
-
-        self._reflectanceSensor = reflectance
 
         # Serial interface for host UI over Bluetooth (HC-05)
         # self._ser = UART(3, 38400)               # type: UART
@@ -119,6 +126,16 @@ class task_user:
         self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
         self._lineFollowKff = lineFollowKff         # type: Share
+
+        # Shares for IMU data
+        self._imuMode = imuMode
+        self._imuCalib = imuCalibration
+        self._Ax = imuAx
+        self._Ay = imuAy
+        self._Az = imuAz
+        self._Gx = imuGx
+        self._Gy = imuGy
+        self._Gz = imuGz
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -163,20 +180,21 @@ class task_user:
             if self._state == S0_PROMPT:
                 while True:
                     self._ser.write("\r\n\n")
-                    self._ser.write("+-----------------------------------------------------------------------+\n\r")
-                    self._ser.write("| ME 405 Romi Tuning Interface Help Menu                                |\n\r")
-                    self._ser.write("+---+-------------------------------------------------------------------+\n\r")
+                    self._ser.write("+-----------------------------------------------------------------------+\r\n")
+                    self._ser.write("| ME 405 Romi Tuning Interface Help Menu                                |\r\n")
+                    self._ser.write("+---+-------------------------------------------------------------------+\r\n")
+                    self._ser.write("| h | Print help menu                                                   |\r\n")
                     yield
-                    self._ser.write("| h | Print help menu                                                   |\n\r")
-                    self._ser.write("| k | Enter new gain values                                             |\n\r")
-                    self._ser.write("| s | Choose a new setpoint                                             |\n\r")
-                    self._ser.write("| g | Trigger step response and print results                           |\n\r")
+                    self._ser.write("| k | Enter new gain values                                             |\r\n")
+                    self._ser.write("| s | Choose a new setpoint                                             |\r\n")
+                    self._ser.write("| g | Trigger step response and print results                           |\r\n")
+                    self._ser.write("| c | Line Sensor Calibration                                           |\r\n")
                     yield
-                    self._ser.write("| c | Line Sensor Calibration                                           |\n\r")
-                    self._ser.write("| l | Follow Line                                                       |\n\r")
-                    self._ser.write("| i | Misc Debug                                                        |\n\r")
-                    self._ser.write("+---+-------------------------------------------------------------------+\n\r")
-                    self._ser.write("\n\r")
+                    self._ser.write("| b | BNO055 IMU menu                                                   |\r\n")
+                    self._ser.write("| l | Follow Line                                                       |\r\r")
+                    self._ser.write("| i | Misc Debug                                                        |\r\r")
+                    self._ser.write("+---+-------------------------------------------------------------------+\r\r")
+                    self._ser.write("\r\n")
                     self._ser.write(">: ")
 
                     break
@@ -228,6 +246,10 @@ class task_user:
                     elif inChar in {"l", "L"}:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S9_LINEFOLLOW
+
+                    elif inChar in {"b", "B"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S10_IMU_MENU
 
                     elif inChar in {"\r", "\n"}:
                         while self._ser.any():
@@ -430,16 +452,16 @@ class task_user:
                 ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
                 ############################################
-                raw, calibrated, value = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
+                # raw, calibrated, value = self._reflectanceSensor.get_values()
+                # self._ser.write(f" RAW   CALIBRATED  \r\n")
+                # for i in range(len(raw)):
+                #     self._ser.write(f"{raw[i]}")
+                #     self._ser.write('   ')
+                #     for _ in range(int(calibrated[i]*10)):
+                #         self._ser.write('+')
+                #     self._ser.write("\r\n")
 
-                self._ser.write(f"Measured value: {value:.2f}\r\n")
+                # self._ser.write(f"Measured value: {value:.2f}\r\n")
                 # """
                 # """
                 # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
@@ -479,27 +501,30 @@ class task_user:
                 ############################################
                 # IMU
                 ############################################
-                # i2c1 = I2C(1, baudrate=100000)
-                # imu = BNO055(i2c1)
+                # yield from self._imu.tare_accel_gyro()
 
-                # self._ser.write(f"{time.ticks_ms()}\r\n")
-                # yield from imu.begin()
+                # # Give imu time to settl
+                # time.sleep_ms(10)
+                # yield
+                # time.sleep_ms(10)
+                # yield
+                # time.sleep_ms(10)
+                # yield
 
-                # self._ser.write(f"{time.ticks_ms()}\r\n")
-                # self._ser.write("IMU initialized.\r\n")
+                # ax = self._Ax.get()
+                # ay = self._Ay.get()
+                # az = self._Az.get()
+                # gx = self._Gx.get()
+                # gy = self._Gy.get()
+                # gz = self._Gz.get()
 
-                # calib_check = imu.calibration_status()
-                # self._ser.write(f"System calib: {calib_check[0]}\r\n")
-                # self._ser.write(f"Gyro calib: {calib_check[1]}\r\n")
-                # self._ser.write(f"Accel calib: {calib_check[2]}\r\n")
-                # self._ser.write(f"Magnetometer calib: {calib_check[3]}\r\n")
+                # self._ser.write("Accelerometer data: \r\n")
+                # for x in (ax, ay, az, gx, gy, gz):
+                #     self._ser.write(f"  {x}\r\n")
 
-                # self._ser.write(f'Accel: {imu.acceleration()}\r\n')
-                # self._ser.write(f'Gyro: {imu.gyro()}\r\n')
-                # self._ser.write(f'Temp: {imu.temperature_c()}\r\n')
+                # self._ser.write("\r\n")
 
 
-                
 
                 # Return to main prompt
                 self._state = S0_PROMPT
@@ -626,6 +651,129 @@ class task_user:
                 
                 # Return to main prompt
                 self._state = S0_PROMPT
+
+            elif self._state == S10_IMU_MENU:
+                self._ser.write("\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  | IMU Submenu                    |\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  | 1: Load calibration            |\r\n")
+                self._ser.write("  | 2: Save calibration            |\r\n")
+                self._ser.write("  | 3: Tare accel and gyro         |\r\n")
+                self._ser.write("  | 4: Read and print values       |\r\n")
+                self._ser.write("  | 5: Get calibration states      |\r\n")
+                self._ser.write("  |                                |\r\n")
+                self._ser.write("  | 0: Exit                        |\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  ->: ")
+
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode('ascii')
+
+                        if inChar.isdigit():
+                            user_sel = int(inChar)
+
+                            # Load calibration from file
+                            if user_sel == 0:
+                                self._ser.write(f"{inChar}\r\n")
+
+                                self._state = S0_PROMPT
+                                break # Return to main menu
+
+                            elif user_sel == 1:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(1)
+
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+                                self._ser.write("Calibration loaded.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Save calibration to file
+                            elif user_sel == 2:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(2)
+                                
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+                                self._ser.write("Calibration saved.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Tare readings
+                            elif user_sel == 3:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(3)
+                                
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+
+                                self._ser.write("  Readings tared.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Read and print
+                            elif user_sel == 4:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(4)
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        ax = self._Ax.get()
+                                        ay = self._Ay.get()
+                                        az = self._Az.get()
+                                        gx = self._Gx.get()
+                                        gy = self._Gy.get()
+                                        gz = self._Gz.get()
+
+                                        self._ser.write("  Accelerometer data: \r\n")
+                                        self._ser.write(f"   - x: {ax}\r\n")
+                                        self._ser.write(f"   - y: {ay}\r\n")
+                                        self._ser.write(f"   - z: {az}\r\n")
+                                        self._ser.write("  Gyroscope data: \r\n")
+                                        self._ser.write(f"   - x: {gx}\r\n")
+                                        self._ser.write(f"   - y: {gy}\r\n")
+                                        self._ser.write(f"   - z: {gz}\r\n")
+                                        break
+                                    yield
+
+                                break # Redraw imu submenu
+
+                            # Get calibration status
+                            elif user_sel == 5:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(5)
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        raw_calib = self._imuCalib.get()
+
+                                        s_sys = (raw_calib >> 6) & 0x03
+                                        s_gyro = (raw_calib >> 4) & 0x03
+                                        s_accel = (raw_calib >> 2) & 0x03
+                                        s_mag = raw_calib & 0x03
+
+                                        self._ser.write("  Calibration status: \r\n")
+                                        self._ser.write(f"   - System: {s_sys}\r\n")
+                                        self._ser.write(f"   - Gyro:   {s_gyro}\r\n")
+                                        self._ser.write(f"   - Accel:  {s_accel}\r\n")
+                                        self._ser.write(f"   - Mag:    {s_mag}\r\n")
+
+                                        break
+                                    yield
+                                    
+                                break # Redraw imu submenu
+
+
+                    yield
+
+                    
 
             #Need to import a logging thing which we can then graph.
 

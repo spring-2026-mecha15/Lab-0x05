@@ -73,6 +73,9 @@ _TEMP = const(0x34)
 
 _CALIB_STAT = const(0x35)
 
+_ACC_OFFSET_X_LSB = const(0x55)
+_CALIB_PROFILE_LEN = const(22)
+
 _OPR_MODE = const(0x3D)
 _PWR_MODE = const(0x3E)
 _SYS_TRIGGER = const(0x3F)
@@ -109,6 +112,8 @@ class BNO055:
         self.i2c = i2c
         self.address = address
         self._mode = OPERATION_MODE_CONFIG
+        self._accel_tare = (0.0, 0.0, 0.0)
+        self._gyro_tare = (0.0, 0.0, 0.0)
 
     # ---------- low-level I2C helpers ----------
     def _read_u8(self, reg):
@@ -119,6 +124,9 @@ class BNO055:
 
     def _read_len(self, reg, n):
         return self.i2c.mem_read(n, self.address, reg)
+
+    def _write_len(self, reg, data):
+        self.i2c.mem_write(data, self.address, reg)
 
     @staticmethod
     def _to_int16(lsb, msb):
@@ -200,17 +208,102 @@ class BNO055:
         mag = c & 0x03
         return sys, gyro, accel, mag
 
-    def acceleration(self):
+    def get_calibration_offsets(self):
+        prev_mode = self._mode
+        yield from self.set_mode(OPERATION_MODE_CONFIG)
+        yield from cooperative_delay_ms(25)
+        offsets = bytes(self._read_len(_ACC_OFFSET_X_LSB, _CALIB_PROFILE_LEN))
+        if prev_mode != OPERATION_MODE_CONFIG:
+            yield from self.set_mode(prev_mode)
+            yield from cooperative_delay_ms(20)
+        return offsets
+
+    def set_calibration_offsets(self, offsets):
+        payload = bytes(offsets)
+        if len(payload) != _CALIB_PROFILE_LEN:
+            raise ValueError("offsets must be 22 bytes")
+
+        prev_mode = self._mode
+        yield from self.set_mode(OPERATION_MODE_CONFIG)
+        yield from cooperative_delay_ms(25)
+        self._write_len(_ACC_OFFSET_X_LSB, payload)
+        yield from cooperative_delay_ms(10)
+        if prev_mode != OPERATION_MODE_CONFIG:
+            yield from self.set_mode(prev_mode)
+            yield from cooperative_delay_ms(20)
+        return True
+
+    def clear_calibration_offsets(self):
+        return (yield from self.set_calibration_offsets(bytes(_CALIB_PROFILE_LEN)))
+
+    def set_tare(self, accel_xyz, gyro_xyz):
+        self._accel_tare = (float(accel_xyz[0]), float(accel_xyz[1]), float(accel_xyz[2]))
+        self._gyro_tare = (float(gyro_xyz[0]), float(gyro_xyz[1]), float(gyro_xyz[2]))
+
+    def get_tare(self):
+        return self._accel_tare, self._gyro_tare
+
+    def clear_tare(self):
+        self._accel_tare = (0.0, 0.0, 0.0)
+        self._gyro_tare = (0.0, 0.0, 0.0)
+
+    def tare_accel_gyro(self, sample_count=100, sample_delay_ms=5):
+        if sample_count <= 0:
+            raise ValueError("sample_count must be > 0")
+
+        sum_ax = 0.0
+        sum_ay = 0.0
+        sum_az = 0.0
+        sum_gx = 0.0
+        sum_gy = 0.0
+        sum_gz = 0.0
+
+        for _ in range(sample_count):
+            ax, ay, az = self.acceleration_raw()
+            gx, gy, gz = self.gyro_raw()
+            sum_ax += ax
+            sum_ay += ay
+            sum_az += az
+            sum_gx += gx
+            sum_gy += gy
+            sum_gz += gz
+            if sample_delay_ms > 0:
+                yield from cooperative_delay_ms(sample_delay_ms)
+
+        self._accel_tare = (
+            sum_ax / sample_count,
+            sum_ay / sample_count,
+            sum_az / sample_count,
+        )
+        self._gyro_tare = (
+            sum_gx / sample_count,
+            sum_gy / sample_count,
+            sum_gz / sample_count,
+        )
+
+        return self._accel_tare, self._gyro_tare
+
+    def acceleration_raw(self):
         x, y, z = self._read_vec3_i16(_ACC_DATA_X_LSB)
         return (x * _SCALE_ACCEL_MS2, y * _SCALE_ACCEL_MS2, z * _SCALE_ACCEL_MS2)
+
+    def gyro_raw(self):
+        x, y, z = self._read_vec3_i16(_GYR_DATA_X_LSB)
+        return (x * _SCALE_GYRO_DPS, y * _SCALE_GYRO_DPS, z * _SCALE_GYRO_DPS)
+
+    def acceleration(self):
+        ax, ay, az = self.acceleration_raw()
+        tx, ty, tz = self._accel_tare
+        return (ax - tx, ay - ty, az - tz)
 
     def magnetic(self):
         x, y, z = self._read_vec3_i16(_MAG_DATA_X_LSB)
         return (x * _SCALE_MAG_UT, y * _SCALE_MAG_UT, z * _SCALE_MAG_UT)
 
     def gyro(self):
-        x, y, z = self._read_vec3_i16(_GYR_DATA_X_LSB)
-        return (x * _SCALE_GYRO_DPS, y * _SCALE_GYRO_DPS, z * _SCALE_GYRO_DPS)
+        gx, gy, gz = self.gyro_raw()
+        tx, ty, tz = self._gyro_tare
+        return (gx - tx, gy - ty, gz - tz)
 
     def euler(self):
         # heading, roll, pitch

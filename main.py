@@ -12,7 +12,7 @@
 import gc
 
 # Hardware drivers and timing
-from pyb import Timer
+from pyb import Timer, I2C
 gc.collect()
 
 # Motor and sensor control
@@ -21,6 +21,8 @@ gc.collect()
 from drivers.encoder import Encoder
 gc.collect()
 from drivers.reflectance import Reflectance_Sensor
+gc.collect()
+from drivers.imu import BNO055
 gc.collect()
 
 # Configuration constants
@@ -35,6 +37,8 @@ gc.collect()
 from task_line_follow import task_line_follow
 gc.collect()
 from task_reflectance import task_reflectance
+gc.collect()
+from task_imu import task_imu
 gc.collect()
 
 # Inter-task communication and scheduling
@@ -71,6 +75,8 @@ reflectanceSensor = Reflectance_Sensor([
     QTRX_A11,
     QTRX_A13
     ])
+
+imuSensor = BNO055(I2C(1, baudrate=100000))
 
 
 
@@ -124,6 +130,16 @@ rightMotorKi.put(DEFAULT_MOTOR_KI)
 #   - 2: Running
 reflectanceMode      = Share("B", name="Reflectance Sensor Go Flag")
 
+# IMU shares
+imuMode        = Share("B", name="IMU Mode")
+imuCalibration = Share("B", name="IMU Calibration Values")
+imuAx          = Share("f", name="IMU Accel X")
+imuAy          = Share("f", name="IMU Accel Y")
+imuAz          = Share("f", name="IMU Accel Z")
+imuGx          = Share("f", name="IMU Gyro X")
+imuGy          = Share("f", name="IMU Gyro Y")
+imuGz          = Share("f", name="IMU Gyro Z")
+
 
 # ============================================================================
 # TASK INSTANTIATION
@@ -149,7 +165,8 @@ userTask = task_user(
     reflectanceMode,
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
     lineFollowKi, lineCentroid, lineFollowKff,
-    reflectanceSensor
+    imuMode, imuCalibration,
+    imuAx, imuAy, imuAz, imuGx, imuGy, imuGz
     )
 
 # Create a line follower control instance
@@ -174,6 +191,13 @@ reflectanceTask = task_reflectance(
     centroidTimeValues
 )
 
+# Create an IMU sensor instance
+imuTask = task_imu(
+    imuSensor, imuMode, imuCalibration,
+    imuAx, imuAy, imuAz,
+    imuGx, imuGy, imuGz
+)
+
 
 # ============================================================================
 # TASK SCHEDULING SETUP
@@ -192,6 +216,16 @@ task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
                       priority=4, period=15, profile=True))
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=15, profile=True))
+task_list.append(Task(imuTask.run, name="IMU Task",
+                      priority=10, period=10, profile=True))
+
+def garbage_collect():
+    while True:
+        gc.collect()
+        yield 0
+
+task_list.append(Task(garbage_collect, name="Garbage collection",
+                      priority=0, period=2000, profile=False))
 
 gc.collect()
 
