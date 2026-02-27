@@ -136,7 +136,7 @@ class task_imu:
                 # Attempt to restore saved calibration; otherwise calibrate live.
                 loaded = yield from self._load_calibration()
                 if loaded:
-                    print('DEBUG: Calibration restored')
+                    # print('DEBUG: Calibration restored')
                     self._calibration_saved = True
                     self._state = S2_IDLE
                 else:
@@ -151,7 +151,7 @@ class task_imu:
                 if all([x == 0x03 for x in calib_status]):
                     if not self._calibration_saved:
                         self._calibration_saved = bool((yield from self._save_calibration()))
-                        print('DEBUG: Calibration saved')
+                        # print('DEBUG: Calibration saved')
                     self._state = S2_IDLE
 
             elif self._state == S2_IDLE:
