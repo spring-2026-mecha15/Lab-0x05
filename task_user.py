@@ -20,7 +20,7 @@ except ImportError:
     import json
 
 from pyb import I2C
-from drivers.imu import BNO055, OPERATION_MODE_NDOF
+from drivers.imu import BNO055, NDOF_OP_MODE
 import time
 import gc
 
