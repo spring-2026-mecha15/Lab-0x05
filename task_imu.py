@@ -1,6 +1,6 @@
 from task_share import Share
 from micropython import const
-from drivers.imu import BNO055, OPERATION_MODE_NDOF
+from drivers.imu import BNO055, NDOF_OP_MODE
 from constants import IMU_FILE
 from pyb import I2C
 try:
@@ -131,7 +131,7 @@ class task_imu:
         while True:
             if self._state == S0_BEGIN:
                 # Begin sensor (contains cooperative delays)
-                yield from self._imu.begin(OPERATION_MODE_NDOF)
+                yield from self._imu.initialize(NDOF_OP_MODE)
 
                 # Attempt to restore saved calibration; otherwise calibrate live.
                 loaded = yield from self._load_calibration()
