@@ -1,10 +1,9 @@
-"""
-Main control loop for dual-motor closed-loop control system.
+# Main control loop for dual-motor closed-loop control system.
 
-This module initializes hardware drivers, communication channels, and tasks
-for controlling two motors with encoders. It runs a real-time scheduler
-that coordinates motor control and user interface tasks.
-"""
+# This module initializes hardware drivers, communication channels, and tasks
+# for controlling two motors with encoders. It runs a real-time scheduler
+# that coordinates motor control and user interface tasks.
+
 
 # ============================================================================
 # IMPORTS
@@ -13,7 +12,7 @@ that coordinates motor control and user interface tasks.
 import gc
 
 # Hardware drivers and timing
-from pyb import Timer
+from pyb import Timer, I2C
 gc.collect()
 
 # Motor and sensor control
@@ -22,6 +21,8 @@ gc.collect()
 from drivers.encoder import Encoder
 gc.collect()
 from drivers.reflectance import Reflectance_Sensor
+gc.collect()
+from drivers.imu import BNO055
 gc.collect()
 
 # Configuration constants
@@ -36,6 +37,8 @@ gc.collect()
 from task_line_follow import task_line_follow
 gc.collect()
 from task_reflectance import task_reflectance
+gc.collect()
+from task_imu import task_imu
 gc.collect()
 
 # Inter-task communication and scheduling
@@ -73,6 +76,8 @@ reflectanceSensor = Reflectance_Sensor([
     QTRX_A13
     ])
 
+imuSensor = BNO055(I2C(1, baudrate=100000))
+
 
 
 # ============================================================================
@@ -96,8 +101,8 @@ dataValues = Queue("f", 50, name="Data Collection Buffer")
 timeValues = Queue("L", 50, name="Time Buffer")
 
 # Centroid logging buffers (for line-follow plotting)
-centroidValues = Queue("f", 500, name="Centroid Buffer")
-centroidTimeValues = Queue("L", 500, name="Centroid Time Buffer")
+centroidValues = Queue("f", 50, name="Centroid Buffer")
+centroidTimeValues = Queue("L", 50, name="Centroid Time Buffer")
 
 # Line following sensor shares
 lineCentroid        = Share("f", name="Line Centroid Val")
@@ -106,6 +111,17 @@ lineFollowGo        = Share("B", name="Line Follow Go Flag")
 lineFollowSetPoint  = Share("f", name="Line Follow Set Point")
 lineFollowKp        = Share("f", name="Line Follow Kp Gain")
 lineFollowKi        = Share("f", name="Line Follow Ki Gain")
+lineFollowKff       = Share("f", name="Line Follow Kff Gain")
+
+# Load default gains
+# Note: tasks will try to read from
+# saved configuration on their first run
+lineFollowKp.put(DEFAULT_LF_KP)
+lineFollowKi.put(DEFAULT_LF_KI)
+leftMotorKp.put(DEFAULT_MOTOR_KP)
+rightMotorKp.put(DEFAULT_MOTOR_KP)
+leftMotorKi.put(DEFAULT_MOTOR_KI)
+rightMotorKi.put(DEFAULT_MOTOR_KI)
 
 # Reflectance sensor array shares
 #  Mode:
@@ -113,6 +129,16 @@ lineFollowKi        = Share("f", name="Line Follow Ki Gain")
 #   - 1: Calibration Mode
 #   - 2: Running
 reflectanceMode      = Share("B", name="Reflectance Sensor Go Flag")
+
+# IMU shares
+imuMode        = Share("B", name="IMU Mode")
+imuCalibration = Share("B", name="IMU Calibration Values")
+imuAx          = Share("f", name="IMU Accel X")
+imuAy          = Share("f", name="IMU Accel Y")
+imuAz          = Share("f", name="IMU Accel Z")
+imuGx          = Share("f", name="IMU Gyro X")
+imuGy          = Share("f", name="IMU Gyro Y")
+imuGz          = Share("f", name="IMU Gyro Z")
 
 
 # ============================================================================
@@ -137,7 +163,10 @@ userTask = task_user(
     dataValues, timeValues,
     centroidValues, centroidTimeValues,
     reflectanceMode,
-    lineFollowGo, lineFollowSetPoint, lineFollowKp, lineFollowKi, lineCentroid
+    lineFollowGo, lineFollowSetPoint, lineFollowKp,
+    lineFollowKi, lineCentroid, lineFollowKff,
+    imuMode, imuCalibration,
+    imuAx, imuAy, imuAz, imuGx, imuGy, imuGz
     )
 
 # Create a line follower control instance
@@ -147,6 +176,7 @@ lineFollowTask = task_line_follow(
     lineFollowKp,
     lineFollowKi,
     lineCentroid,
+    lineFollowKff,
     rightMotorSetPoint,
     leftMotorSetPoint
 )
@@ -159,6 +189,13 @@ reflectanceTask = task_reflectance(
     lineFound,
     centroidValues,
     centroidTimeValues
+)
+
+# Create an IMU sensor instance
+imuTask = task_imu(
+    imuSensor, imuMode, imuCalibration,
+    imuAx, imuAy, imuAz,
+    imuGx, imuGy, imuGz
 )
 
 
@@ -179,6 +216,16 @@ task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
                       priority=4, period=15, profile=True))
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=15, profile=True))
+task_list.append(Task(imuTask.run, name="IMU Task",
+                      priority=10, period=10, profile=True))
+
+def garbage_collect():
+    while True:
+        gc.collect()
+        yield 0
+
+task_list.append(Task(garbage_collect, name="Garbage collection",
+                      priority=0, period=2000, profile=False))
 
 gc.collect()
 
@@ -197,6 +244,7 @@ while True:
         print("Program Terminating")
         leftMotor.disable()
         rightMotor.disable()
+        del userTask
         break
 
 # Print final statistics and status information

@@ -1,0 +1,27 @@
+GAINS
+
+
+Line follow at 300mm/s
+Motor Kp: 0.05
+Motor Ki: 0.60
+Line Follower Kp: 0.70
+Line Follower Ki: 0.08
+Line Follower Kff: 0.50
+
+
+New motor tuning (with romi mass):
+Motor Kp: 0.15
+Motor Ki: 4.0
+Line Follower Kp: 0.40
+Line Follower Ki: 0.30
+Line Follower Kff: 0.50 (for circle track, CW)
+
+IMU CALIBRATION DATA (ACCEL AND GYRO)
+System calib: 3
+Gyro calib: 3
+Accel calib: 3
+Magnetometer calib: 3
+Avg Accel: (0.07390001, -0.1381, 9.803398)
+Avg Gyro: (-0.00125, 0.004375, 0.013125)
+Magnetic: (-32.5625, 29.375, -21.75)
+Temp: 28

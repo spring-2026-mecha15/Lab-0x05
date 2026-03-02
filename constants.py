@@ -15,6 +15,10 @@ try:
     ENCODER_L_A = Pin.cpu.A1
     ENCODER_L_B = Pin.cpu.A0
 
+    # IMU connected to I2C Bus 2
+    # Pins must be configured to use AF-4
+    # https://www.st.com/resource/en/datasheet/stm32l476rg.pdf
+    # Table-17, page 89.
     IMU_RST = Pin.cpu.B15
     IMU_SCL = Pin.cpu.B14
     IMU_SDA = Pin.cpu.B13
@@ -30,7 +34,8 @@ try:
     BATT_ADC = Pin.cpu.B1
 
 except ImportError:
-    print('Info: skipping pin definitions on non-STM32 device')
+    # print('Info: skipping pin definitions on non-STM32 device')
+    pass
 
 PI = 3.1415926536
 
@@ -54,18 +59,41 @@ CSV_BEGIN = '>>>>CSV START<<<<'
 CSV_END = '>>>>CSV END<<<<'            
 
 GAINS_FILE = "gains.json"
+IMU_FILE = "imu.json"
 
-# # Typical main.py setup:
-# from pyb import Timer
-# from drivers.motor import Motor
-# from drivers.encoder import Encoder
-# from constants import *
+DEFAULT_MOTOR_KP  = 0.15
+DEFAULT_MOTOR_KI  = 4.0
+DEFAULT_LF_KP     = 0.40
+DEFAULT_LF_KI     = 0.30
+DEFAULT_LF_KFF    = 0.5
 
-# tim1 = Timer(1) # For R encoder
-# tim2 = Timer(2) # For L encoder
-# tim3 = Timer(3, freq=50000) # For motor PWMs
 
-# motor_right = Motor(MOTOR_R_PWM, tim3, 1, MOTOR_R_SLP, MOTOR_R_DIR)
-# motor_left = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR)
-# encoder_r = Encoder(tim1, ENCODER_R_A, ENCODER_R_B)
-# encoder_l = Encoder(tim2, ENCODER_L_A, ENCODER_L_B)
+# System matrices (output from MATLAB)
+# Tuned for T_S of 20ms
+A_D = [
+    [ 0.7427, 0.0000, 0.2494, 0.2494],
+    [ 0.0000, 0.0061, 0.0000, 0.0000],
+    [-0.1212, 0.0000, 0.3192, 0.3095],
+    [-0.1212, 0.0000, 0.3095, 0.3192]
+]
+
+B_D = [
+    [0.1962,  0.1962,  0.1287,  0.1287,  0.0000, -0.0000],
+    [0.0000,  0.0000, -0.0071,  0.0071,  0.0001,  0.0039],
+    [0.7137,  0.4156,  0.0606,  0.0606,  0.0000, -1.8098],
+    [0.4156,  0.7137,  0.0606,  0.0606,  0.0000,  1.8098]
+]
+
+C_D = [
+    [1.0000, -70.0000,  0.0000, 0.0000],
+    [1.0000,  70.0000,  0.0000, 0.0000],
+    [0.0000,   1.0000,  0.0000, 0.0000],
+    [0.0000,   0.0000, -0.2500, 0.2500]
+]
+
+D_D = [
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0]
+]

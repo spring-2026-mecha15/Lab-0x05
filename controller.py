@@ -2,17 +2,16 @@ from utime import ticks_us, ticks_diff
 
 
 class PIController:
-    """
-    Generic PI (Proportional + Integral) controller for MicroPython.
+    # Generic PI (Proportional + Integral) controller for MicroPython.
 
-    Each `run()` call:
-        1) reads sensor
-        2) computes error and dt
-        3) updates integral (with anti-windup)
-        4) computes PI output
-        5) clamps to saturation
-        6) sends to actuator
-    """
+    # Each `run()` call:
+    #     1) reads sensor
+    #     2) computes error and dt
+    #     3) updates integral (with anti-windup)
+    #     4) computes PI output
+    #     5) clamps to saturation
+    #     6) sends to actuator
+    
 
     def __init__(
         self,
@@ -36,9 +35,11 @@ class PIController:
         # Controller gains (defaults preserved as in original)
         self._Kp = 0.0
         self._Ki = 0.0
+        self._Kff = 0.0
 
         # Controller state
         self._setpoint = 0.0
+        self._ff_setpoint = 0.0
         self._last_ticksus = 0
         self._last_measured = 0.0
         self._i_error = 0.0
@@ -72,6 +73,17 @@ class PIController:
     @set_point.setter
     def set_point(self, value: float) -> None:
         self._setpoint = value
+
+    def set_feed_forward(self, setpoint: float, gain: float) -> None:
+        """
+        Set feed-forward setpoint and gain.
+
+        Feed-forward effort is computed as:
+            ff_term = gain * setpoint
+        and is added to the PI effort before saturation.
+        """
+        self._ff_setpoint = setpoint
+        self._Kff = gain
 
     # --------------------
     # Control methods
@@ -137,7 +149,8 @@ class PIController:
             i_term = current_i_term
 
         # --- Compute final effort and saturate ---
-        effort_pre_sat = p_term + i_term
+        ff_term = self._Kff * self._ff_setpoint
+        effort_pre_sat = p_term + i_term + ff_term
         effort_pre_sat *= self._actuator_gain
 
         if effort_pre_sat < self._sat_min:

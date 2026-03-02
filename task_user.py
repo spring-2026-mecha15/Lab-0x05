@@ -13,14 +13,19 @@ from pyb import USB_VCP, UART, ADC, Pin
 from task_share import Share, Queue
 import micropython
 from multichar_input import multichar_input
-from constants import CSV_BEGIN, CSV_END, GAINS_FILE
+from constants import CSV_BEGIN, CSV_END, GAINS_FILE, BATT_ADC
 try:
     import ujson as json
 except ImportError:
     import json
 
+from pyb import I2C
+from drivers.imu import BNO055, NDOF_OP_MODE
+import time
+import gc
+
 # State constants (use micropython.const for efficiency on embedded)
-S0_INIT = micropython.const(0)          # Initial state: print prompt
+S0_PROMPT = micropython.const(0)          # Initial state: print prompt
 S1_CMD = micropython.const(1)           # Wait for single-character command
 S2_HELP = micropython.const(2)          # Show help, wait for Enter
 S3_GAINS = micropython.const(3)         # Read new Kp / Ki values
@@ -30,31 +35,31 @@ S6_DISPLAY_DATA = micropython.const(6)  # Print collected CSV data
 S7_DEBUG = micropython.const(7)         # For Misc Debugging
 S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
 S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
+S10_IMU_MENU = micropython.const(10)    # IMU submenu
 
 # Reusable UI text
-UI_prompt = """\r\n\n
-+-----------------------------------------------------------------------+\r
-| ME 405 Romi Tuning Interface Help Menu                                |\r
-+---+-------------------------------------------------------------------+\r
-| h | Print help menu                                                   |\r
-| k | Enter new gain values                                             |\r
-| s | Choose a new setpoint                                             |\r
-| g | Trigger step response and print results                           |\r
-| c | Line Sensor Calibration                                           |\r
-| l | Follow Line                                                       |\r
-| i | Misc Debug                                                        |\r
-+---+-------------------------------------------------------------------+\r
-\r
->: """
+# UI_prompt = "\r\n\n \
+# +-----------------------------------------------------------------------+\n\r \
+# | ME 405 Romi Tuning Interface Help Menu                                |\n\r \
+# +---+-------------------------------------------------------------------+\n\r \
+# | h | Print help menu                                                   |\n\r \
+# | k | Enter new gain values                                             |\n\r \
+# | s | Choose a new setpoint                                             |\n\r \
+# | g | Trigger step response and print results                           |\n\r \
+# | c | Line Sensor Calibration                                           |\n\r \
+# | l | Follow Line                                                       |\n\r \
+# | i | Misc Debug                                                        |\n\r \
+# +---+-------------------------------------------------------------------+\n\r \
+# \n\r \
+# >: "
 
 
 class task_user:
-    """
-    UI task class used by the cooperative scheduler.
+    # UI task class used by the cooperative scheduler.
 
-    The `run()` method is a generator that yields the current state each
-    iteration so it can cooperate with cotask scheduler semantics.
-    """
+    # The `run()` method is a generator that yields the current state each
+    # iteration so it can cooperate with cotask scheduler semantics.
+    
 
     def __init__(
         self,
@@ -75,21 +80,20 @@ class task_user:
         lineFollowSetPoint,    # type: Share
         lineFollowKp,          # type: Share
         lineFollowKi,          # type: Share
-        lineCentroid           # type: Share
+        lineCentroid,          # type: Share
+        lineFollowKff,          # type: Share
+        imuMode,               # type: Share
+        imuCalibration,        # type: Share
+        imuAx,                 # type: Share
+        imuAy,                 # type: Share
+        imuAz,                 # type: Share
+        imuGx,                 # type: Share
+        imuGy,                 # type: Share
+        imuGz                  # type: Share
     ):
-        """
-        Initialize the UI task.
-
-        Args (comment-style hints):
-            leftMotorGo, rightMotorGo: Share("B") boolean flags for data collection
-            leftMotorKp, leftMotorKi, rightMotorKp, rightMotorKi: Share("f") gains
-            leftMotorSetPoint, rightMotorSetPoint: Share("f") setpoint values
-            dataValues: Queue("f", ...) encoder/sample data
-            timeValues: Queue("L", ...) timestamps for collected samples
-        """
 
         # State machine
-        self._state = S0_INIT  # current state (int)
+        self._state = S0_PROMPT  # current state (int)
 
         # Shares for left motor (comment hints only)
         self._leftMotorGo = leftMotorGo            # type: Share
@@ -103,11 +107,10 @@ class task_user:
         self._rightMotorKi = rightMotorKi          # type: Share
         self._rightMotorSetPoint = rightMotorSetPoint  # type: Share
 
-        # Serial interface for host UI over ST-Link VCP (UART2)
-        # self._UART = UART(2, 115200)               # type: UART
-        self._ser = UART(2, 115200)               # type: UART
+        # Serial interface for host UI over Bluetooth (HC-05)
+        # self._ser = UART(3, 38400)               # type: UART
         # Serial interface (USB virtual COM port / REPL-side UI)
-        # self._ser = USB_VCP()                       # type: USB_VCP
+        self._ser = USB_VCP()                       # type: USB_VCP
 
         # Queues used for data collection / logging
         self._dataValues = dataValues               # type: Queue
@@ -122,6 +125,17 @@ class task_user:
         self._lineFollowKp = lineFollowKp           # type: Share
         self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
+        self._lineFollowKff = lineFollowKff         # type: Share
+
+        # Shares for IMU data
+        self._imuMode = imuMode
+        self._imuCalib = imuCalibration
+        self._Ax = imuAx
+        self._Ay = imuAy
+        self._Az = imuAz
+        self._Gx = imuGx
+        self._Gy = imuGy
+        self._Gz = imuGz
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -138,7 +152,8 @@ class task_user:
             "line_follower": {
                 "kp": self._lineFollowKp.get(),
                 "ki": self._lineFollowKi.get(),
-                "set_point": self._lineFollowSetPoint.get()
+                "set_point": self._lineFollowSetPoint.get(),
+                "kff": self._lineFollowKff.get()
             },
         }
 
@@ -151,20 +166,39 @@ class task_user:
         return True
 
     def run(self):
-        """
-        Generator for the task's behavior.
+        # Generator for the task's behavior.
 
-        Yields:
-            current state (int) at the end of each loop iteration so the
-            cooperative scheduler can manage it.
-        """
+        # Yields:
+        #     current state (int) at the end of each loop iteration so the
+        #     cooperative scheduler can manage it.
+        
         while True:
 
             # -----------------------
-            # S0_INIT: print prompt
+            # S0_PROMPT: print prompt
             # -----------------------
-            if self._state == S0_INIT:
-                self._ser.write(UI_prompt)
+            if self._state == S0_PROMPT:
+                while True:
+                    self._ser.write("\r\n\n")
+                    self._ser.write("+-----------------------------------------------------------------------+\r\n")
+                    self._ser.write("| ME 405 Romi Tuning Interface Help Menu                                |\r\n")
+                    self._ser.write("+---+-------------------------------------------------------------------+\r\n")
+                    self._ser.write("| h | Print help menu                                                   |\r\n")
+                    yield
+                    self._ser.write("| k | Enter new gain values                                             |\r\n")
+                    self._ser.write("| s | Choose a new setpoint                                             |\r\n")
+                    self._ser.write("| g | Trigger step response and print results                           |\r\n")
+                    self._ser.write("| c | Line Sensor Calibration                                           |\r\n")
+                    yield
+                    self._ser.write("| b | BNO055 IMU menu                                                   |\r\n")
+                    self._ser.write("| l | Follow Line                                                       |\r\r")
+                    self._ser.write("| i | Misc Debug                                                        |\r\r")
+                    self._ser.write("+---+-------------------------------------------------------------------+\r\r")
+                    self._ser.write("\r\n")
+                    self._ser.write(">: ")
+
+                    break
+
                 self._state = S1_CMD
 
             # -----------------------
@@ -194,7 +228,8 @@ class task_user:
                     elif inChar in {"g", "G"}:
                         self._ser.write(f"{inChar}\r\n")
                         # Enable the right motor test (preserved behavior)
-                        self._rightMotorGo.put(1)
+                        self._rightMotorGo.put(2) # Set 2 for profiling
+                        self._leftMotorGo.put(1)  # Set 1 for just spinning (not collecting data)
                         self._state = S5_COLLECT
 
                     # Line Sensor Calibration
@@ -212,11 +247,15 @@ class task_user:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S9_LINEFOLLOW
 
-                    elif inChar in {"\r", "\n"}:
-                        self._ser.write(UI_prompt)
+                    elif inChar in {"b", "B"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S10_IMU_MENU
 
+                    elif inChar in {"\r", "\n"}:
                         while self._ser.any():
-                            self._ser.read(None)
+                            self._ser.read(1)
+                        
+                        self._state = S0_PROMPT
 
             # -----------------------
             # S2_HELP: display help, wait for Enter
@@ -238,8 +277,7 @@ class task_user:
                             break
                     yield
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S3_GAINS: prompt for motor and line following Kp and Ki (uses multichar_input)
@@ -312,16 +350,33 @@ class task_user:
                 else:
                     self._ser.write("No value entered. LF Ki gains unchanged.\r\n")
 
+                # Prompt and read new LF feed forward gain
+                self._ser.write(
+                    f"\r\nCurrent LF Kff gain: {self._lineFollowKff.get():.2f}\r\n"
+                )
+                self._ser.write("Enter a new LF Kff gain value:\r\n->: ")
+                value = yield from multichar_input(self._ser)
+
+                if value is not None:
+                    if value < 0:
+                        self._ser.write("Invalid LF Kff gain (< 0). LF Kff gain unchanged")
+                    else:
+                        self._lineFollowKff.put(value)
+                        self._ser.write(f"LF Kff Gain Set To: {value}\r\n")
+                else:
+                    self._ser.write("No value entered. LF Kff gain unchanged.\r\n")
+
                 # Show final values and return to prompt
                 self._ser.write("\r\nController gains:\r\n")
                 self._ser.write(f" - Motor Kp: {self._leftMotorKp.get():.2f}\r\n")
                 self._ser.write(f" - Motor Ki: {self._leftMotorKi.get():.2f}\r\n")
                 self._ser.write(f" - Line follower Kp: {self._lineFollowKp.get():.2f}\r\n")
                 self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
+                self._ser.write(f" - Line follower Kff: {self._lineFollowKff.get():.2f}\r\n")
                 if not self._save_gains():
                     self._ser.write(f"Warning: failed to save {GAINS_FILE}.\r\n")
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+
+                self._state = S0_PROMPT
 
             # -----------------------
             # S4_SETPOINT: prompt for setpoints (uses multichar_input)
@@ -351,8 +406,7 @@ class task_user:
 
                 self._save_gains()
 
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S5_COLLECT: wait while data collection runs
@@ -367,6 +421,8 @@ class task_user:
                     # Disable motors
                     self._leftMotorGo.put(0)
                     self._rightMotorGo.put(0)
+
+                    yield # Let motors pick up the new command
 
                     self._ser.write("Data collection complete...\r\n")
                     self._ser.write(f"{CSV_BEGIN}\r\n")
@@ -384,8 +440,7 @@ class task_user:
                     )
                 else:
                     self._ser.write(f"{CSV_END}\r\n")
-                    self._ser.write(UI_prompt)
-                    self._state = S1_CMD
+                    self._state = S0_PROMPT
 
 
             # -----------------------
@@ -394,42 +449,85 @@ class task_user:
             elif self._state == S7_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
+                ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
-                """
-                raw, calibrated, value = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
+                ############################################
+                # raw, calibrated, value = self._reflectanceSensor.get_values()
+                # self._ser.write(f" RAW   CALIBRATED  \r\n")
+                # for i in range(len(raw)):
+                #     self._ser.write(f"{raw[i]}")
+                #     self._ser.write('   ')
+                #     for _ in range(int(calibrated[i]*10)):
+                #         self._ser.write('+')
+                #     self._ser.write("\r\n")
 
-                self._ser.write(f"Measured value: {value:.2f}\r\n")
-                """
-                """
-                self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-                """
+                # self._ser.write(f"Measured value: {value:.2f}\r\n")
+                # """
+                # """
+                # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
+                # value = yield from multichar_input(self._ser)
+                ############################################
 
-                # BATTERY DROOP COMPENSATION
-                """
-                adcVal = self._battAdc.read()
+                ############################################
+                # # BATTERY DROOP COMPENSATION
+                ############################################
+                # adcVal = self._battAdc.read()
 
-                adcVoltage = (adcVal / 4096 * 3.3)
+                # adcVoltage = (adcVal / 4096 * 3.3)
 
-                # Scale for 4.7k and 10k voltage divider
-                battVoltage = adcVoltage / 0.305
+                # # Scale for 4.7k and 10k voltage divider
+                # battVoltage = adcVoltage / 0.305
 
-                # Calculate scaling factor
-                effortScale = 6.5 / battVoltage
+                # # Calculate scaling factor
+                # effortScale = 6.5 / battVoltage
 
-                self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
-                """
+                # self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
+                ############################################
+
+
+                ############################################
+                # BATTERY LEVEL
+                ############################################
+                # # --- Scale value to account for battery droop
+                # adcVoltage = ADC(BATT_ADC).read() / 4096 * 3.3
+
+                # # Scale for 4.7k and 10k voltage divider.
+                # # (Slightly tweaked to account for actual VDD)
+                # battVoltage = adcVoltage / 0.305
+
+                # self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n")
+
+
+                ############################################
+                # IMU
+                ############################################
+                # yield from self._imu.tare_accel_gyro()
+
+                # # Give imu time to settl
+                # time.sleep_ms(10)
+                # yield
+                # time.sleep_ms(10)
+                # yield
+                # time.sleep_ms(10)
+                # yield
+
+                # ax = self._Ax.get()
+                # ay = self._Ay.get()
+                # az = self._Az.get()
+                # gx = self._Gx.get()
+                # gy = self._Gy.get()
+                # gz = self._Gz.get()
+
+                # self._ser.write("Accelerometer data: \r\n")
+                # for x in (ax, ay, az, gx, gy, gz):
+                #     self._ser.write(f"  {x}\r\n")
+
+                # self._ser.write("\r\n")
+
+
 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S8_CALIBRATE: calibration state
@@ -449,8 +547,7 @@ class task_user:
 
                 # If NO selected, return to main menu from this point
                 if inChar in {"n", "N"}:
-                    self._ser.write(UI_prompt)
-                    self._state = S1_CMD
+                    self._state = S0_PROMPT
 
                     yield 0
                     continue
@@ -499,8 +596,7 @@ class task_user:
                 self._ser.write('Sensor calibration complete.\r\n')
 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
 
             # -----------------------
             # S9_LINEFOLLOW: Line Following State
@@ -511,19 +607,9 @@ class task_user:
 
                 # Set sensor array into RUN mode
                 self._reflectanceMode.put(3)
-
-                # Configure motor control params
-                self._leftMotorKi.put(0.6)
-                self._rightMotorKi.put(0.6)
-
-                self._leftMotorKp.put(0.02)
-                self._rightMotorKp.put(0.02)
-
-                self._leftMotorSetPoint.put(0)
-                self._rightMotorSetPoint.put(0)
-
                 self._leftMotorGo.put(1)
                 self._rightMotorGo.put(1)
+                yield # Let sensor array pick up the change
 
                 # Enable line following controller
                 self._lineFollowGo.put(1)
@@ -554,6 +640,7 @@ class task_user:
                     
                 # Stop line-following mode and related tasks before returning.
                 self._ser.write(f"{CSV_END}\r\n")
+
                 self._lineFollowGo.put(0)
                 self._reflectanceMode.put(0)
                 self._leftMotorGo.put(0)
@@ -563,10 +650,136 @@ class task_user:
 
                 
                 # Return to main prompt
-                self._ser.write(UI_prompt)
-                self._state = S1_CMD
+                self._state = S0_PROMPT
+
+            elif self._state == S10_IMU_MENU:
+                self._ser.write("\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  | IMU Submenu                    |\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  | 1: Load calibration            |\r\n")
+                self._ser.write("  | 2: Save calibration            |\r\n")
+                self._ser.write("  | 3: Tare accel and gyro         |\r\n")
+                self._ser.write("  | 4: Read and print values       |\r\n")
+                self._ser.write("  | 5: Get calibration states      |\r\n")
+                self._ser.write("  |                                |\r\n")
+                self._ser.write("  | 0: Exit                        |\r\n")
+                self._ser.write("  +--------------------------------+\r\n")
+                self._ser.write("  ->: ")
+
+                while True:
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode('ascii')
+
+                        if inChar.isdigit():
+                            user_sel = int(inChar)
+
+                            # Load calibration from file
+                            if user_sel == 0:
+                                self._ser.write(f"{inChar}\r\n")
+
+                                self._state = S0_PROMPT
+                                break # Return to main menu
+
+                            elif user_sel == 1:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(1)
+
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+                                self._ser.write("Calibration loaded.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Save calibration to file
+                            elif user_sel == 2:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(2)
+                                
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+                                self._ser.write("Calibration saved.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Tare readings
+                            elif user_sel == 3:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(3)
+                                
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        break
+                                    yield
+
+                                self._ser.write("  Readings tared.\r\n")
+
+                                break # Redraw imu submenu
+
+                            # Read and print
+                            elif user_sel == 4:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(4)
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        ax = self._Ax.get()
+                                        ay = self._Ay.get()
+                                        az = self._Az.get()
+                                        gx = self._Gx.get()
+                                        gy = self._Gy.get()
+                                        gz = self._Gz.get()
+
+                                        self._ser.write("  Accelerometer data: \r\n")
+                                        self._ser.write(f"   - x: {ax}\r\n")
+                                        self._ser.write(f"   - y: {ay}\r\n")
+                                        self._ser.write(f"   - z: {az}\r\n")
+                                        self._ser.write("  Gyroscope data: \r\n")
+                                        self._ser.write(f"   - x: {gx}\r\n")
+                                        self._ser.write(f"   - y: {gy}\r\n")
+                                        self._ser.write(f"   - z: {gz}\r\n")
+                                        break
+                                    yield
+
+                                break # Redraw imu submenu
+
+                            # Get calibration status
+                            elif user_sel == 5:
+                                self._ser.write(f"{inChar}\r\n")
+                                self._imuMode.put(5)
+                                while True:
+                                    if self._imuMode.get() == 0:
+                                        raw_calib = self._imuCalib.get()
+
+                                        s_sys = (raw_calib >> 6) & 0x03
+                                        s_gyro = (raw_calib >> 4) & 0x03
+                                        s_accel = (raw_calib >> 2) & 0x03
+                                        s_mag = raw_calib & 0x03
+
+                                        self._ser.write("  Calibration status: \r\n")
+                                        self._ser.write(f"   - System: {s_sys}\r\n")
+                                        self._ser.write(f"   - Gyro:   {s_gyro}\r\n")
+                                        self._ser.write(f"   - Accel:  {s_accel}\r\n")
+                                        self._ser.write(f"   - Mag:    {s_mag}\r\n")
+
+                                        break
+                                    yield
+                                    
+                                break # Redraw imu submenu
+
+
+                    yield
+
+                    
 
             #Need to import a logging thing which we can then graph.
 
             # Yield the current state per scheduler convention
             yield self._state
+
+
+    def __del__(self, instance):
+        self._ser.write("Program terminated.")
