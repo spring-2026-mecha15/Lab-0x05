@@ -67,17 +67,33 @@ DEFAULT_LF_KP     = 0.40
 DEFAULT_LF_KI     = 0.30
 DEFAULT_LF_KFF    = 0.5
 
-# # Typical main.py setup:
-# from pyb import Timer
-# from drivers.motor import Motor
-# from drivers.encoder import Encoder
-# from constants import *
 
-# tim1 = Timer(1) # For R encoder
-# tim2 = Timer(2) # For L encoder
-# tim3 = Timer(3, freq=50000) # For motor PWMs
+# System matrices (output from MATLAB)
+# Tuned for T_S of 20ms
+A_D = [
+    [ 0.7427, 0.0000, 0.2494, 0.2494],
+    [ 0.0000, 0.0061, 0.0000, 0.0000],
+    [-0.1212, 0.0000, 0.3192, 0.3095],
+    [-0.1212, 0.0000, 0.3095, 0.3192]
+]
 
-# motor_right = Motor(MOTOR_R_PWM, tim3, 1, MOTOR_R_SLP, MOTOR_R_DIR)
-# motor_left = Motor(MOTOR_L_PWM, tim3, 2, MOTOR_L_SLP, MOTOR_L_DIR)
-# encoder_r = Encoder(tim1, ENCODER_R_A, ENCODER_R_B)
-# encoder_l = Encoder(tim2, ENCODER_L_A, ENCODER_L_B)
+B_D = [
+    [0.1962,  0.1962,  0.1287,  0.1287,  0.0000, -0.0000],
+    [0.0000,  0.0000, -0.0071,  0.0071,  0.0001,  0.0039],
+    [0.7137,  0.4156,  0.0606,  0.0606,  0.0000, -1.8098],
+    [0.4156,  0.7137,  0.0606,  0.0606,  0.0000,  1.8098]
+]
+
+C_D = [
+    [1.0000, -70.0000,  0.0000, 0.0000],
+    [1.0000,  70.0000,  0.0000, 0.0000],
+    [0.0000,   1.0000,  0.0000, 0.0000],
+    [0.0000,   0.0000, -0.2500, 0.2500]
+]
+
+D_D = [
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0]
+]
