@@ -136,19 +136,15 @@ imuAy              = Share("f", name="IMU Accel Y")
 imuAz              = Share("f", name="IMU Accel Z")
 imuGx              = Share("f", name="IMU Gyro X")
 imuGy              = Share("f", name="IMU Gyro Y")
-imuGz              = Share("f", name="IMU Gyro Z")
-heading            = Share("f", name="IMU Heading")
+imuYawRate         = Share("f", name="IMU Gyro Z [rad/s]")
 headingRate        = Share("f", name="IMU Heading Rate")
 
 # Observer raw-input shares (unit normalization will happen in observer task)
-motorEffortLeft    = Share("f", name="Left Motor Effort[%]")
-motorEffortRight   = Share("f", name="Right Motor Effort [%]")
+motorVoltageLeft    = Share("f", name="Left Motor Voltage [V]")
+motorVoltageRight   = Share("f", name="Right Motor Voltage [V]")
 wheelDistLeft      = Share("f", name="Wheel Dist Left [mm]")
 wheelDistRight     = Share("f", name="Wheel Dist Right [mm]")
-#I don't have the code in the imu task setting these shares
-yawDeg             = Share("f", name="Observer Yaw [deg]")
-YawRateDegPerSec   = Share("f", name="Observer Yaw Rate [deg/s]")
-
+imuHeading          = Share("f", name="IMU Heading [rad]")
 
 # ============================================================================
 # TASK INSTANTIATION
@@ -158,12 +154,12 @@ YawRateDegPerSec   = Share("f", name="Observer Yaw Rate [deg/s]")
 leftMotorTask = task_motor(
     leftMotor, leftEncoder,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
-    dataValues, timeValues, wheelDistLeft, motorEffortLeft)
+    dataValues, timeValues, wheelDistLeft, motorVoltageLeft)
 
 rightMotorTask = task_motor(
     rightMotor, rightEncoder,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues, wheelDistRight, motorEffortRight)
+    dataValues, timeValues, wheelDistRight, motorVoltageRight)
 
 # Create user interface task for parameter adjustment and data collection
 userTask = task_user(
@@ -175,7 +171,7 @@ userTask = task_user(
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
     lineFollowKi, lineCentroid, lineFollowKff,
     imuMode, imuCalibration,
-    imuAx, imuAy, imuAz, imuGx, imuGy, imuGz
+    imuAx, imuAy, imuAz, imuGx, imuGy, imuYawRate
     )
 
 # Create a line follower control instance
@@ -204,18 +200,18 @@ reflectanceTask = task_reflectance(
 imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
     imuAx, imuAy, imuAz,
-    imuGx, imuGy, imuGz,
-    heading, headingRate
+    imuGx, imuGy, imuYawRate,
+    imuHeading, headingRate
 )
 
 # Create an Observer instance
 observerTask = task_observer(
     wheelDistLeft,
     wheelDistRight,
-    motorEffortLeft,
-    motorEffortRight,
-    heading,
-    headingRate
+    motorVoltageLeft,
+    motorVoltageRight,
+    imuHeading,
+    imuYawRate
 )
 
 

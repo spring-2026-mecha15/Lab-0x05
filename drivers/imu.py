@@ -1,6 +1,7 @@
 from micropython import const
 from pyb import I2C
 import time
+import math
 
 
 def cooperative_delay_ms(delay_ms, state=0):
@@ -53,11 +54,11 @@ M4G_OP_MODE = const(0x0A)           # Magnetometer for Gyroscope
 NDOF_FMC_OFF_OP_MODE = const(0x0B)  # Nine degrees of freedom with fast magnetic calibration off
 NDOF_OP_MODE = const(0x0C)          # Nine degrees of freedom
 
-# Scaling factors (assuming unit selection defaults: m/s^2, degrees, dps, Celsius)
+# Scaling factors (assuming unit selection defaults: m/s^2, rad, rps, Celsius)
 SCALE_ACCEL_MS2 = 1.0 / 100.0       # 1 m/s^2 = 100 LSB
 SCALE_MAG_UT = 1.0 / 16.0           # 1 uT = 16 LSB
-SCALE_GYRO_DPS = 1.0 / 16.0         # 1 dps = 16 LSB
-SCALE_EULER_DEG = 1.0 / 16.0        # 1 degree = 16 LSB
+SCALE_GYRO_RPS = (math.pi / 180.0) / 16.0   # rad/s per LSB
+SCALE_EULER_RAD = (math.pi / 180.0) / 16.0  # rad per LSB
 SCALE_QUAT = 1.0 / 16384.0          # 1 = 2^14 LSB
 
 
@@ -249,7 +250,7 @@ class BNO055:
 
     def gyro_raw(self):
         x, y, z = self._read_vec3_int16(GYR_DATA_X_LSB_REG)
-        return (x * SCALE_GYRO_DPS, y * SCALE_GYRO_DPS, z * SCALE_GYRO_DPS)
+        return (x * SCALE_GYRO_RPS, y * SCALE_GYRO_RPS, z * SCALE_GYRO_RPS)
 
     def acceleration(self):
         ax, ay, az = self.acceleration_raw()
@@ -268,7 +269,7 @@ class BNO055:
     def euler(self):
         # heading, roll, pitch
         h, r, p = self._read_vec3_int16(EUL_HEADING_LSB_REG)
-        return (h * SCALE_EULER_DEG, r * SCALE_EULER_DEG, p * SCALE_EULER_DEG)
+        return (h * SCALE_EULER_RAD, r * SCALE_EULER_RAD, p * SCALE_EULER_RAD)
 
     def quaternion(self):
         b = self._read_bytes(QUA_DATA_W_LSB_REG, 8)
