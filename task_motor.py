@@ -26,8 +26,9 @@ class task_motor:
     
 
     def __init__(self,
-                 mot: Motor, enc: Encoder, position: Share,
-                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorEffort: Share):
+                 mot: Motor, enc: Encoder,
+                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share,
+                 dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorEffort: Share):
         # Initializes a motor task object
         
         # Args:
@@ -46,9 +47,6 @@ class task_motor:
         self._mot: Motor        = mot        # A motor object
         self._enc: Encoder      = enc        # An encoder object
 
-        self._posShare: Share   = position   # A share so other tasks can read
-                                             # the current position of the motor
-        
         self._goFlag: Share     = goFlag     # A share object representing a
                                              # flag to start data collection
 
@@ -168,12 +166,6 @@ class task_motor:
                 if not(self._goFlag.get()):
                     self._state = S1_WAIT
                     self._mot.disable()
-
-                # Send the current encoder position to the global share.
-                # Used for state-estimation
-                self._posShare.put(
-                    self._enc.get_position()
-                )
 
                 self._controller.set_point = self._setpoint.get()
                 

@@ -64,12 +64,12 @@ class task_observer:
     def run(self):
         while True:
             #need pull shares then do unit conversions before passing into the update function
-            self.update(
-                self.u_L.get(),
-                self.u_R.get(),
-                self.s_L.get(),
-                self.s_R.get(),
-                self.psi.get(),
-                self.psi_dot.get(),
-            )
+            # self.update(
+            #     self.u_L.get(),
+            #     self.u_R.get(),
+            #     self.s_L.get(),
+            #     self.s_R.get(),
+            #     self.psi.get(),
+            #     self.psi_dot.get(),
+            # )
             yield 0

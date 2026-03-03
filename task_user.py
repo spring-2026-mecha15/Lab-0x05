@@ -23,6 +23,7 @@ from pyb import I2C
 from drivers.imu import BNO055, NDOF_OP_MODE
 import time
 import gc
+from drivers.reflectance import Reflectance_Sensor
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_PROMPT = micropython.const(0)        # Initial state: print prompt
@@ -75,6 +76,7 @@ class task_user:
         centroidValues,        # type: Queue
         centroidTimeValues,    # type: Queue
         reflectanceMode,       # type: Share
+        reflectanceSensor,     # type: Reflectance_Sensor
         lineFollowGo,          # type: Share
         lineFollowSetPoint,    # type: Share
         lineFollowKp,          # type: Share
@@ -118,6 +120,7 @@ class task_user:
         self._centroidTimeValues = centroidTimeValues  # type: Queue
 
         # Shares for reflectance sensor
+        self._reflectanceSensor = reflectanceSensor
         self._reflectanceMode = reflectanceMode     # type: Share
         self._lineFollowGo = lineFollowGo           # type: Share
         self._lineFollowSetPoint = lineFollowSetPoint
@@ -450,18 +453,16 @@ class task_user:
                 ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
                 ############################################
-                # raw, calibrated, value = self._reflectanceSensor.get_values()
-                # self._ser.write(f" RAW   CALIBRATED  \r\n")
-                # for i in range(len(raw)):
-                #     self._ser.write(f"{raw[i]}")
-                #     self._ser.write('   ')
-                #     for _ in range(int(calibrated[i]*10)):
-                #         self._ser.write('+')
-                #     self._ser.write("\r\n")
+                raw, calibrated, value = self._reflectanceSensor.get_values()
+                self._ser.write(f" RAW   CALIBRATED  \r\n")
+                for i in range(len(raw)):
+                    self._ser.write(f"{raw[i]:04d}")
+                    self._ser.write('   ')
+                    for _ in range(int(calibrated[i]*10)):
+                        self._ser.write('+')
+                    self._ser.write("\r\n")
 
-                # self._ser.write(f"Measured value: {value:.2f}\r\n")
-                # """
-                # """
+                self._ser.write(f"Measured centroid: {value:.2f}\r\n\n")
                 # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
                 # value = yield from multichar_input(self._ser)
                 ############################################
@@ -486,14 +487,14 @@ class task_user:
                 ############################################
                 # BATTERY LEVEL
                 ############################################
-                # # --- Scale value to account for battery droop
-                # adcVoltage = ADC(BATT_ADC).read() / 4096 * 3.3
+                # --- Scale value to account for battery droop
+                adcVoltage = ADC(BATT_ADC).read() / 4096 * 3.3
 
-                # # Scale for 4.7k and 10k voltage divider.
-                # # (Slightly tweaked to account for actual VDD)
-                # battVoltage = adcVoltage / 0.305
+                # Scale for 4.7k and 10k voltage divider.
+                # (Slightly tweaked to account for actual VDD)
+                battVoltage = adcVoltage / 0.305
 
-                # self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n")
+                self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n")
 
 
                 ############################################
@@ -620,7 +621,7 @@ class task_user:
                 sample_idx = 0
                 while True:
                     # Decimate queued samples; stream only every Nth row to reduce CSV volume.
-                    while self._centroidTimeValues.any() and self._centroidValues.any():
+                    if self._centroidTimeValues.any() and self._centroidValues.any():
                         t_ms = self._centroidTimeValues.get()
                         centroid = self._centroidValues.get()
                         if (sample_idx % stream_decimation) == 0:
@@ -634,7 +635,7 @@ class task_user:
                             while self._ser.any():
                                 self._ser.read(None)
                             break
-                    yield
+                    yield 0
                     
                 # Stop line-following mode and related tasks before returning.
                 self._ser.write(f"{CSV_END}\r\n")
