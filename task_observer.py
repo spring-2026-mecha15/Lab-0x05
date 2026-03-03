@@ -1,13 +1,33 @@
+from task_share import Share
 from ulab import numpy as np
 
+from constants import A_D, B_D, C_D, D_D
+
 class task_observer:
-    def __init__(self, A_D, B_D, C_D):
+    def __init__(
+            self,
+            distLeft:      Share,
+            distRight:     Share,
+            effortLeft:    Share,
+            effortRight:   Share,
+            heading:       Share,
+            headingRate:   Share
+        ):
+
+        self.s_L = distLeft
+        self.s_R = distRight
+
+        self.u_L = effortLeft
+        self.u_R = effortRight
+
+        self.psi = heading
+        self.psi_dot = headingRate
+
         self.A_D = np.array(A_D)
         self.B_D = np.array(B_D)
         self.C_D = np.array(C_D)
         
         self.x_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
-
         self.y_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
 
     def update(self, u_L, u_R, s_L, s_R, psi, psi_dot):
@@ -45,11 +65,11 @@ class task_observer:
         while True:
             #need pull shares then do unit conversions before passing into the update function
             self.update(
-                #self._uL.get(),
-                #self._uR.get(),
-                #self._sL.get(),
-                #self._sR.get(),
-                #self._psi.get(),
-                #self._psi_dot.get(),
+                self.u_L.get(),
+                self.u_R.get(),
+                self.s_L.get(),
+                self.s_R.get(),
+                self.psi.get(),
+                self.psi_dot.get(),
             )
-            yield self._state
+            yield 0

@@ -22,7 +22,9 @@ S8_GET_CALIB_STATE = const(8)
 class task_imu:
     def __init__(self, imuSensor: BNO055, mode: Share, calibration: Share,
                  accelX: Share, accelY: Share, accelZ: Share,
-                 gyroX: Share, gyroY: Share, gyroZ: Share):
+                 gyroX: Share, gyroY: Share, gyroZ: Share,
+                 heading: Share, headingRate: Share
+                 ):
 
         self._mode = mode
         self._calibration = calibration
@@ -33,10 +35,14 @@ class task_imu:
         self._gyroX = gyroX
         self._gyroY = gyroY
         self._gyroZ = gyroZ
+        self._heading = heading
+        self._headingRate = headingRate
 
         self._imu = imuSensor
 
         self._calibration_saved = False
+
+        print('IMU Task initialized')
 
         self._state = S0_BEGIN
 
@@ -140,7 +146,8 @@ class task_imu:
                     self._calibration_saved = True
                     self._state = S2_IDLE
                 else:
-                    self._state = S1_CALIBRATE
+                    # self._state = S1_CALIBRATE
+                    self._state = S2_IDLE
 
 
             elif self._state == S1_CALIBRATE:

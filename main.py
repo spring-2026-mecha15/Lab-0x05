@@ -86,14 +86,12 @@ leftMotorGo        = Share("B", name="Left Mot. Go Flag")
 leftMotorSetPoint  = Share("f", name="Left Mot. Set Point")
 leftMotorKp        = Share("f", name="Left Mot. Kp Gain")
 leftMotorKi        = Share("f", name="Left Mot. Ki Gain")
-leftMotorPos       = Share("f", name="Left Mot. Pos")
 
 # Right motor control shares
 rightMotorGo       = Share("B", name="Right Mot. Go Flag")
 rightMotorSetPoint = Share("f", name="Right Mot. Set Point")
 rightMotorKp       = Share("f", name="Right Mot. Kp Gain")
 rightMotorKi       = Share("f", name="Right Mot. Ki Gain")
-rightMotorPos      = Share("f", name="Right Mot. Pos")
 
 # Data collection buffers (queues for one-way data transmission)
 dataValues         = Queue("f", 50, name="Data Collection Buffer")
@@ -128,26 +126,28 @@ rightMotorKi.put(DEFAULT_MOTOR_KI)
 #   - 1: Calibration Mode (dark)
 #   - 2: Calibration Mode (light)
 #   - 3: Running
-reflectanceMode      = Share("B", name="Reflectance Sensor Go Flag")
+reflectanceMode    = Share("B", name="Reflectance Sensor Go Flag")
 
 # IMU shares
-imuMode        = Share("B", name="IMU Mode")
-imuCalibration = Share("B", name="IMU Calibration Values")
-imuAx          = Share("f", name="IMU Accel X")
-imuAy          = Share("f", name="IMU Accel Y")
-imuAz          = Share("f", name="IMU Accel Z")
-imuGx          = Share("f", name="IMU Gyro X")
-imuGy          = Share("f", name="IMU Gyro Y")
-imuGz          = Share("f", name="IMU Gyro Z")
+imuMode            = Share("B", name="IMU Mode")
+imuCalibration     = Share("B", name="IMU Calibration Values")
+imuAx              = Share("f", name="IMU Accel X")
+imuAy              = Share("f", name="IMU Accel Y")
+imuAz              = Share("f", name="IMU Accel Z")
+imuGx              = Share("f", name="IMU Gyro X")
+imuGy              = Share("f", name="IMU Gyro Y")
+imuGz              = Share("f", name="IMU Gyro Z")
+heading            = Share("f", name="IMU Heading")
+headingRate        = Share("f", name="IMU Heading Rate")
 
 # Observer raw-input shares (unit normalization will happen in observer task)
-motorEffortLeft        = Share("f", name="Left Motor Effort[%]")
-motorEffortRight       = Share("f", name="Right Motor Effort [%]")
-wheelDistLeft          = Share("f", name="Wheel Dist Left [mm]")
-wheelDistRight         = Share("f", name="Wheel Dist Right [mm]")
+motorEffortLeft    = Share("f", name="Left Motor Effort[%]")
+motorEffortRight   = Share("f", name="Right Motor Effort [%]")
+wheelDistLeft      = Share("f", name="Wheel Dist Left [mm]")
+wheelDistRight     = Share("f", name="Wheel Dist Right [mm]")
 #I don't have the code in the imu task setting these shares
-yawDeg            = Share("f", name="Observer Yaw [deg]")
-YawRateDegPerSec  = Share("f", name="Observer Yaw Rate [deg/s]")
+yawDeg             = Share("f", name="Observer Yaw [deg]")
+YawRateDegPerSec   = Share("f", name="Observer Yaw Rate [deg/s]")
 
 
 # ============================================================================
@@ -156,12 +156,12 @@ YawRateDegPerSec  = Share("f", name="Observer Yaw Rate [deg/s]")
 
 # Create motor control task objects with shared communication channels
 leftMotorTask = task_motor(
-    leftMotor, leftEncoder, leftMotorPos,
+    leftMotor, leftEncoder, wheelDistLeft,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     dataValues, timeValues, wheelDistLeft, motorEffortLeft)
 
 rightMotorTask = task_motor(
-    rightMotor, rightEncoder, rightMotorPos,
+    rightMotor, rightEncoder, wheelDistRight,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues, wheelDistRight, motorEffortRight)
 
@@ -204,12 +204,18 @@ reflectanceTask = task_reflectance(
 imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
     imuAx, imuAy, imuAz,
-    imuGx, imuGy, imuGz
+    imuGx, imuGy, imuGz,
+    heading, headingRate
 )
 
 # Create an Observer instance
 observerTask = task_observer(
-    A_D, B_D, C_D
+    wheelDistLeft,
+    wheelDistRight,
+    motorEffortLeft,
+    motorEffortRight,
+    heading,
+    headingRate
 )
 
 
@@ -241,7 +247,7 @@ def garbage_collect():
         yield 0
 
 task_list.append(Task(garbage_collect, name="Garbage collection",
-                      priority=0, period=2000, profile=False))
+                      priority=0, period=10000, profile=True))
 
 gc.collect()
 
