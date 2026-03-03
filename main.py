@@ -35,6 +35,9 @@ from task_reflectance import task_reflectance
 from task_imu import task_imu
 from task_observer import task_observer
 gc.collect()
+from task_observer import task_observer
+gc.collect()
+
 
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
@@ -137,6 +140,15 @@ imuGx          = Share("f", name="IMU Gyro X")
 imuGy          = Share("f", name="IMU Gyro Y")
 imuGz          = Share("f", name="IMU Gyro Z")
 
+# Observer raw-input shares (unit normalization will happen in observer task)
+motorEffortLeft        = Share("f", name="Left Motor Effort[%]")
+motorEffortRight       = Share("f", name="Right Motor Effort [%]")
+wheelDistLeft          = Share("f", name="Wheel Dist Left [mm]")
+wheelDistRight         = Share("f", name="Wheel Dist Right [mm]")
+#I don't have the code in the imu task setting these shares
+yawDeg            = Share("f", name="Observer Yaw [deg]")
+YawRateDegPerSec  = Share("f", name="Observer Yaw Rate [deg/s]")
+
 
 # ============================================================================
 # TASK INSTANTIATION
@@ -146,12 +158,12 @@ imuGz          = Share("f", name="IMU Gyro Z")
 leftMotorTask = task_motor(
     leftMotor, leftEncoder, leftMotorPos,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
-    dataValues, timeValues)
+    dataValues, timeValues, wheelDistLeft, motorEffortLeft)
 
 rightMotorTask = task_motor(
     rightMotor, rightEncoder, rightMotorPos,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues)
+    dataValues, timeValues, wheelDistRight, motorEffortRight)
 
 # Create user interface task for parameter adjustment and data collection
 userTask = task_user(
@@ -195,8 +207,10 @@ imuTask = task_imu(
     imuGx, imuGy, imuGz
 )
 
-# Create an observer task instance
-observerTask = task_observer()
+# Create an Observer instance
+observerTask = task_observer(
+    A_D, B_D, C_D
+)
 
 
 # ============================================================================
@@ -217,9 +231,9 @@ task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=15, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=9, period=10, profile=True))
+                      priority=10, period=10, profile=True))
 task_list.append(Task(observerTask.run, name="Observer Task",
-                      priority=10, period=20, profile=True))
+                      priority=3, period=10, profile=True))
 
 def garbage_collect():
     while True:
