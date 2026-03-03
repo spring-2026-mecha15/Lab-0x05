@@ -69,6 +69,7 @@ class BNO055:
         self.mode = CONFIG_OP_MODE
         self.accel_tare = (0.0, 0.0, 0.0)
         self.gyro_tare = (0.0, 0.0, 0.0)
+        self.euler_tare = (0.0, 0.0, 0.0)
 
     # ---------- Driver Helpers ----------
     def _read_byte(self, register):
@@ -197,9 +198,16 @@ class BNO055:
     def get_tare(self):
         return self.accel_tare, self.gyro_tare
 
+    def set_euler_tare(self, euler_hrp):
+        self.euler_tare = (float(euler_hrp[0]), float(euler_hrp[1]), float(euler_hrp[2]))
+
+    def get_euler_tare(self):
+        return self.euler_tare
+
     def clear_tare(self):
         self.accel_tare = (0.0, 0.0, 0.0)
         self.gyro_tare = (0.0, 0.0, 0.0)
+        self.euler_tare = (0.0, 0.0, 0.0)
 
     def tare_accel_gyro(self, sample_count=100, sample_delay_ms=5):
         if sample_count <= 0:
@@ -237,6 +245,30 @@ class BNO055:
 
         return self.accel_tare, self.gyro_tare
 
+    def tare_euler(self, sample_count=20, sample_delay_ms=5):
+        if sample_count <= 0:
+            raise ValueError("sample_count must be > 0")
+
+        sum_h = 0.0
+        sum_r = 0.0
+        sum_p = 0.0
+
+        for _ in range(sample_count):
+            h, r, p = self.euler_raw()
+            sum_h += h
+            sum_r += r
+            sum_p += p
+            if sample_delay_ms > 0:
+                yield from cooperative_delay_ms(sample_delay_ms)
+
+        self.euler_tare = (
+            sum_h / sample_count,
+            sum_r / sample_count,
+            sum_p / sample_count,
+        )
+
+        return self.euler_tare
+
 
     # ---------- Sensor Readings  ----------
     def temperature(self):
@@ -251,6 +283,11 @@ class BNO055:
     def gyro_raw(self):
         x, y, z = self._read_vec3_int16(GYR_DATA_X_LSB_REG)
         return (x * SCALE_GYRO_RPS, y * SCALE_GYRO_RPS, z * SCALE_GYRO_RPS)
+
+    def euler_raw(self):
+        # heading, roll, pitch
+        h, r, p = self._read_vec3_int16(EUL_HEADING_LSB_REG)
+        return (h * SCALE_EULER_RAD, r * SCALE_EULER_RAD, p * SCALE_EULER_RAD)
 
     def acceleration(self):
         ax, ay, az = self.acceleration_raw()
@@ -267,9 +304,9 @@ class BNO055:
         return (gx - tx, gy - ty, gz - tz)
 
     def euler(self):
-        # heading, roll, pitch
-        h, r, p = self._read_vec3_int16(EUL_HEADING_LSB_REG)
-        return (h * SCALE_EULER_RAD, r * SCALE_EULER_RAD, p * SCALE_EULER_RAD)
+        h, r, p = self.euler_raw()
+        th, tr, tp = self.euler_tare
+        return (h - th, r - tr, p - tp)
 
     def quaternion(self):
         b = self._read_bytes(QUA_DATA_W_LSB_REG, 8)
