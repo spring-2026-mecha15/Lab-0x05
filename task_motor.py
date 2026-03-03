@@ -27,7 +27,7 @@ class task_motor:
 
     def __init__(self,
                  mot: Motor, enc: Encoder,
-                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue):
+                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorEffort: Share):
         # Initializes a motor task object
         
         # Args:
@@ -58,7 +58,11 @@ class task_motor:
 
         self._setpoint: Share   = setpoint   # A share for setpoint value
                                              # from user interface
+
+        self._wheelDistance: Share = wheelDistance  #A share of distance traveled by the wheel from observer
         
+        self._motorEffort: Share = motorEffort  # A share of commanded motor effort [%]
+
         self._dataValues: Queue = dataValues # A queue object used to store
                                              # collected encoder position
         
@@ -70,7 +74,7 @@ class task_motor:
                                              # for a batch of collected data
 
         self._controller = PIController(
-            self._mot.set_effort,     # Actuator callback ()
+            self._apply_effort,     # Actuator callback ()
             MOTOR_GAIN,                   # Actuator gain
             self._enc.get_velocity,   # Sensor  (encoder counts per ms)
             # ENCODER_GAIN,                   # Sensor gain
@@ -90,6 +94,10 @@ class task_motor:
         self._profiling = False
         
         print("Motor Task object instantiated")
+
+    def _apply_effort(self, effort_pct):
+        self._motorEffort.put(effort_pct)
+        self._mot.set_effort(effort_pct)
 
     def _load_gains(self) -> bool:
         try:
@@ -182,7 +190,8 @@ class task_motor:
                 # Update encoder before measuring velocity
                 self._enc.update()
                 self._controller.run()
-                
+                self._wheelDistance.put(self._enc.get_position())
+
                 if self._profiling:
                     vel = self._enc.get_velocity()
 
