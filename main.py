@@ -27,7 +27,9 @@ gc.collect()
 
 # Task implementations
 from task_motor import task_motor
+gc.collect()
 from task_user import task_user
+gc.collect()
 from task_line_follow import task_line_follow
 from task_reflectance import task_reflectance
 from task_imu import task_imu
