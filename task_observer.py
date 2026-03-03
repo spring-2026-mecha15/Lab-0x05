@@ -8,8 +8,8 @@ class task_observer:
             self,
             distLeft:      Share,
             distRight:     Share,
-            effortLeft:    Share,
-            effortRight:   Share,
+            voltageLeft:    Share,
+            voltageRight:   Share,
             heading:       Share,
             headingRate:   Share
         ):
@@ -17,8 +17,8 @@ class task_observer:
         self.s_L = distLeft
         self.s_R = distRight
 
-        self.u_L = effortLeft
-        self.u_R = effortRight
+        self.u_L = voltageLeft
+        self.u_R = voltageRight
 
         self.psi = heading
         self.psi_dot = headingRate
@@ -36,9 +36,9 @@ class task_observer:
         Updates the state estimate using the latest motor commands and sensor readings.
         Must be called at exactly Ts = 0.02s (50 Hz).
         
-        Parameters:
+        State Estimation Parameters:
         -----------
-        u_L     : float : Commanded left motor voltage (Volts)
+        u_L     : float : Commanded left motor voltage (Volts) 
         u_R     : float : Commanded right motor voltage (Volts)
         s_L     : float : Measured left wheel distance from encoders (mm)
         s_R     : float : Measured right wheel distance from encoders (mm)

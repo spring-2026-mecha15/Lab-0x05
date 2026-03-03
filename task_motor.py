@@ -27,7 +27,7 @@ class task_motor:
 
     def __init__(self,
                  mot: Motor, enc: Encoder, position: Share,
-                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorEffort: Share):
+                 goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorVoltage: Share):
         # Initializes a motor task object
         
         # Args:
@@ -61,7 +61,7 @@ class task_motor:
 
         self._wheelDistance: Share = wheelDistance  #A share of distance traveled by the wheel from observer
         
-        self._motorEffort: Share = motorEffort  # A share of commanded motor effort [%]
+        self._motorVoltage: Share = motorVoltage  # A share of commanded motor voltage [V]
 
         self._dataValues: Queue = dataValues # A queue object used to store
                                              # collected encoder position
@@ -94,7 +94,10 @@ class task_motor:
         print("Motor Task object instantiated")
 
     def _apply_effort(self, effort_pct):
-        self._motorEffort.put(effort_pct)
+
+        motor_voltage = (effort_pct / 100.0) * 6.5
+        self._motorVoltage.put(motor_voltage)
+        
         self._mot.set_effort(effort_pct)
 
     def _load_gains(self) -> bool:

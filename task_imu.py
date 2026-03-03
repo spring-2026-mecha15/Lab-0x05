@@ -182,6 +182,9 @@ class task_imu:
                 gx, gy, gz = self._imu.gyro()
                 ax, ay, az = self._imu.acceleration()
                 mx, my, mz = self._imu.magnetic()
+                h, r, p = self._imu.euler()
+
+                self._heading.put(h)
 
                 self._gyroX.put(gx)
                 self._gyroY.put(gy)

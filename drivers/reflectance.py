@@ -13,7 +13,6 @@ class Reflectance_Sensor:
     #     - calibration file loading (`load_calibration_from_file`)
     #     - cooperative calibration sampling (`calibrate`) via `yield`
     
-
     _CALIBRATION_FILE = "ir_calibration.json"
     _SAMPLE_COUNT = 100
     _SAMPLE_PERIOD_MS = 10
