@@ -25,17 +25,16 @@ import time
 import gc
 
 # State constants (use micropython.const for efficiency on embedded)
-S0_PROMPT = micropython.const(0)          # Initial state: print prompt
+S0_PROMPT = micropython.const(0)        # Initial state: print prompt
 S1_CMD = micropython.const(1)           # Wait for single-character command
 S2_HELP = micropython.const(2)          # Show help, wait for Enter
 S3_GAINS = micropython.const(3)         # Read new Kp / Ki values
 S4_SETPOINT = micropython.const(4)      # Read new setpoint
 S5_COLLECT = micropython.const(5)       # Wait for data collection to finish
-S6_DISPLAY_DATA = micropython.const(6)  # Print collected CSV data
-S7_DEBUG = micropython.const(7)         # For Misc Debugging
-S8_CALIBRATION = micropython.const(8)   # Calibrate Line Sensor
-S9_LINEFOLLOW = micropython.const(9)   # Calibrate Line Sensor
-S10_IMU_MENU = micropython.const(10)    # IMU submenu
+S6_DEBUG = micropython.const(6)         # For Misc Debugging
+S7_CALIBRATION = micropython.const(7)   # Calibrate Line Sensor
+S8_LINEFOLLOW = micropython.const(8)    # Calibrate Line Sensor
+S9_IMU_MENU = micropython.const(9)      # IMU submenu
 
 # Reusable UI text
 # UI_prompt = "\r\n\n \
@@ -235,21 +234,21 @@ class task_user:
                     # Line Sensor Calibration
                     elif inChar in {"c", "C"}:
                         self._ser.write(f"{inChar}\r\n")
-                        self._state = S8_CALIBRATION
+                        self._state = S7_CALIBRATION
 
                     # Debug
                     elif inChar in {"i", "I"}:
                         self._ser.write(f"{inChar}\r\n")
-                        self._state = S7_DEBUG
+                        self._state = S6_DEBUG
 
                     # Line Follow
                     elif inChar in {"l", "L"}:
                         self._ser.write(f"{inChar}\r\n")
-                        self._state = S9_LINEFOLLOW
+                        self._state = S8_LINEFOLLOW
 
                     elif inChar in {"b", "B"}:
                         self._ser.write(f"{inChar}\r\n")
-                        self._state = S10_IMU_MENU
+                        self._state = S9_IMU_MENU
 
                     elif inChar in {"\r", "\n"}:
                         while self._ser.any():
@@ -427,26 +426,25 @@ class task_user:
                     self._ser.write("Data collection complete...\r\n")
                     self._ser.write(f"{CSV_BEGIN}\r\n")
                     self._ser.write("Time (ms), Velocity (mm/s)\r\n")
-                    self._state = S6_DISPLAY_DATA
+
+                    while True:
+                        if self._dataValues.any():
+                            # Print one sample (time, data) per iteration
+                            self._ser.write(
+                                f"{self._timeValues.get()},{self._dataValues.get()}\r\n"
+                            )
+                        else:
+                            self._ser.write(f"{CSV_END}\r\n")
+                            self._state = S0_PROMPT
+                            break
+
+                        yield
+
 
             # -----------------------
-            # S6_DISPLAY_DATA: print CSV rows from queues
+            # S6_DEBUG: debug state
             # -----------------------
-            elif self._state == S6_DISPLAY_DATA:
-                if self._dataValues.any():
-                    # Print one sample (time, data) per iteration
-                    self._ser.write(
-                        f"{self._timeValues.get()},{self._dataValues.get()}\r\n"
-                    )
-                else:
-                    self._ser.write(f"{CSV_END}\r\n")
-                    self._state = S0_PROMPT
-
-
-            # -----------------------
-            # S7_DEBUG: debug state
-            # -----------------------
-            elif self._state == S7_DEBUG:
+            elif self._state == S6_DEBUG:
                 self._ser.write("DEBUG\r\n")
 
                 ############################################
@@ -530,9 +528,9 @@ class task_user:
                 self._state = S0_PROMPT
 
             # -----------------------
-            # S8_CALIBRATE: calibration state
+            # S7_CALIBRATE: calibration state
             # -----------------------
-            elif self._state == S8_CALIBRATION:
+            elif self._state == S7_CALIBRATION:
                 self._ser.write("CALIBRATION\r\n")
 
                 # Double check this is the action the user wants to make
@@ -599,9 +597,9 @@ class task_user:
                 self._state = S0_PROMPT
 
             # -----------------------
-            # S9_LINEFOLLOW: Line Following State
+            # S8_LINEFOLLOW: Line Following State
             # -----------------------
-            elif self._state == S9_LINEFOLLOW:
+            elif self._state == S8_LINEFOLLOW:
                 self._ser.write("Line Follow Mode\r\n")
                 # self._UART.write("Line Follow Mode\r\n")
 
@@ -652,7 +650,7 @@ class task_user:
                 # Return to main prompt
                 self._state = S0_PROMPT
 
-            elif self._state == S10_IMU_MENU:
+            elif self._state == S9_IMU_MENU:
                 self._ser.write("\r\n")
                 self._ser.write("  +--------------------------------+\r\n")
                 self._ser.write("  | IMU Submenu                    |\r\n")
@@ -779,7 +777,3 @@ class task_user:
 
             # Yield the current state per scheduler convention
             yield self._state
-
-
-    def __del__(self, instance):
-        self._ser.write("Program terminated.")

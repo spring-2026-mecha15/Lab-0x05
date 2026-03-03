@@ -26,7 +26,7 @@ class task_motor:
     
 
     def __init__(self,
-                 mot: Motor, enc: Encoder,
+                 mot: Motor, enc: Encoder, position: Share,
                  goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share, dataValues: Queue, timeValues: Queue):
         # Initializes a motor task object
         
@@ -44,28 +44,26 @@ class task_motor:
         self._state: int        = S0_INIT    # The present state of the task       
         
         self._mot: Motor        = mot        # A motor object
-        
         self._enc: Encoder      = enc        # An encoder object
+
+        self._posShare: Share   = position   # A share so other tasks can read
+                                             # the current position of the motor
         
         self._goFlag: Share     = goFlag     # A share object representing a
                                              # flag to start data collection
 
         self._kpVal: Share      = kpVal      # A share for Kp gain from user
                                              # interface
-
         self._kiVal: Share      = kiVal      # A share for Ki gain from user
                                              # interface
-
         self._setpoint: Share   = setpoint   # A share for setpoint value
                                              # from user interface
         
         self._dataValues: Queue = dataValues # A queue object used to store
                                              # collected encoder position
-        
         self._timeValues: Queue = timeValues # A queue object used to store the
                                              # time stamps associated with the
                                              # collected encoder data
-        
         self._startTime: int    = 0          # The start time (in microseconds)
                                              # for a batch of collected data
 
@@ -162,6 +160,12 @@ class task_motor:
                 if not(self._goFlag.get()):
                     self._state = S1_WAIT
                     self._mot.disable()
+
+                # Send the current encoder position to the global share.
+                # Used for state-estimation
+                self._posShare.put(
+                    self._enc.get_position()
+                )
 
                 self._controller.set_point = self._setpoint.get()
                 

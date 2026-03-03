@@ -113,8 +113,8 @@ class task_line_follow:
                     # Configure feed-forward for this velocity
                     radius = 300 # radius of test circle in mm
                     omega = self._nominalSetPoint / radius
-
                     self._controller.set_feed_forward(omega, self._Kff.get())
+                    
 
                     self._controller.reset()
                     

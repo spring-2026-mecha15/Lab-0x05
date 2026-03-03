@@ -83,12 +83,14 @@ leftMotorGo        = Share("B", name="Left Mot. Go Flag")
 leftMotorSetPoint  = Share("f", name="Left Mot. Set Point")
 leftMotorKp        = Share("f", name="Left Mot. Kp Gain")
 leftMotorKi        = Share("f", name="Left Mot. Ki Gain")
+leftMotorPos       = Share("f", name="Left Mot. Pos")
 
 # Right motor control shares
 rightMotorGo       = Share("B", name="Right Mot. Go Flag")
 rightMotorSetPoint = Share("f", name="Right Mot. Set Point")
 rightMotorKp       = Share("f", name="Right Mot. Kp Gain")
 rightMotorKi       = Share("f", name="Right Mot. Ki Gain")
+rightMotorPos      = Share("f", name="Right Mot. Pos")
 
 # Data collection buffers (queues for one-way data transmission)
 dataValues         = Queue("f", 50, name="Data Collection Buffer")
@@ -120,8 +122,9 @@ rightMotorKi.put(DEFAULT_MOTOR_KI)
 # Reflectance sensor array shares
 #  Mode:
 #   - 0: Idle
-#   - 1: Calibration Mode
-#   - 2: Running
+#   - 1: Calibration Mode (dark)
+#   - 2: Calibration Mode (light)
+#   - 3: Running
 reflectanceMode      = Share("B", name="Reflectance Sensor Go Flag")
 
 # IMU shares
@@ -141,12 +144,12 @@ imuGz          = Share("f", name="IMU Gyro Z")
 
 # Create motor control task objects with shared communication channels
 leftMotorTask = task_motor(
-    leftMotor, leftEncoder,
+    leftMotor, leftEncoder, leftMotorPos,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     dataValues, timeValues)
 
 rightMotorTask = task_motor(
-    rightMotor, rightEncoder,
+    rightMotor, rightEncoder, rightMotorPos,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues)
 

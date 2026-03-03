@@ -142,6 +142,7 @@ class Encoder:
         
         self.timer_reloads = 0
         self.prev_count = 0
+        self.position = 0
 
         # Reset hardware counter
         self.timer.counter(0)
