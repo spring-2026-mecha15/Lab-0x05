@@ -36,6 +36,7 @@ S6_DEBUG = micropython.const(6)         # For Misc Debugging
 S7_CALIBRATION = micropython.const(7)   # Calibrate Line Sensor
 S8_LINEFOLLOW = micropython.const(8)    # Calibrate Line Sensor
 S9_IMU_MENU = micropython.const(9)      # IMU submenu
+S10_STATE_ESTIMATION = micropython.const(10) # State Estimation
 
 # Reusable UI text
 # UI_prompt = "\r\n\n \
@@ -90,7 +91,20 @@ class task_user:
         imuAz,                 # type: Share
         imuGx,                 # type: Share
         imuGy,                 # type: Share
-        imuGz                  # type: Share
+        imuHeadingRate,         # type: Share
+        motorVoltageLeft,      # type: Share
+        motorVoltageRight,     # type: Share
+        wheelDistLeft,         # type: Share
+        wheelDistRight,        # type: Share
+        imuHeading,            # type: Share
+        motorOmegaLeft,        # type: Share
+        motorOmegaRight,       # type: Share
+        observerHeading,       # type: Share
+        observerHeadingRate,   # type: Share
+        observerOmegaLeft,     # type: Share
+        observerOmegaRight,    # type: Share
+        observerDistanceLeft,  # type: Share
+        observerDistanceRight  # type: Share
     ):
 
         # State machine
@@ -137,7 +151,22 @@ class task_user:
         self._Az = imuAz
         self._Gx = imuGx
         self._Gy = imuGy
-        self._Gz = imuGz
+        self._Gz = imuHeadingRate
+
+        # Shares for state-estimation comparison
+        self._motorVoltageLeft = motorVoltageLeft
+        self._motorVoltageRight = motorVoltageRight
+        self._wheelDistLeft = wheelDistLeft
+        self._wheelDistRight = wheelDistRight
+        self._imuHeading = imuHeading
+        self._motorOmegaLeft = motorOmegaLeft
+        self._motorOmegaRight = motorOmegaRight
+        self._observerHeading = observerHeading
+        self._observerHeadingRate = observerHeadingRate
+        self._observerOmegaLeft = observerOmegaLeft
+        self._observerOmegaRight = observerOmegaRight
+        self._observerDistanceLeft = observerDistanceLeft
+        self._observerDistanceRight = observerDistanceRight
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -194,6 +223,7 @@ class task_user:
                     yield
                     self._ser.write("| b | BNO055 IMU menu                                                   |\r\n")
                     self._ser.write("| l | Follow Line                                                       |\r\n")
+                    self._ser.write("| e | State Estimation                                                  |\r\n")
                     self._ser.write("| i | Misc Debug                                                        |\r\n")
                     self._ser.write("+---+-------------------------------------------------------------------+\r\n")
                     self._ser.write("\r\n")
@@ -651,6 +681,9 @@ class task_user:
                 # Return to main prompt
                 self._state = S0_PROMPT
 
+            # -----------------------
+            # S9_IMU_Menue: Line Following State
+            # -----------------------
             elif self._state == S9_IMU_MENU:
                 self._ser.write("\r\n")
                 self._ser.write("  +--------------------------------+\r\n")
@@ -772,9 +805,60 @@ class task_user:
 
                     yield
 
-                    
-
             #Need to import a logging thing which we can then graph.
+            
+
+            # -----------------------
+            # S10_State_Estimation: State Estimation Test
+            # -----------------------                    
+            elif self._state == S10_STATE_ESTIMATION:
+                self._ser.write("State Estimation Test\r\n")
+
+                # Set sensor array into RUN mode
+                self._reflectanceMode.put(3)
+                self._leftMotorGo.put(1)
+                self._rightMotorGo.put(1)
+                yield # Let sensor array pick up the change
+
+                # Enable line following controller
+                self._lineFollowGo.put(1)
+
+                self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
+
+                # Wait for newline or carriage return, non-blocking (yielding)
+                self._ser.write(f"{CSV_BEGIN}\r\n")
+
+                while True:
+                    
+                    #Add Logic Here
+
+
+
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"\r", "\n"}:
+                            # Clear any remaining input then exit help
+                            while self._ser.any():
+                                self._ser.read(None)
+                            break
+                    yield 0
+                    
+                # Stop line-following mode and related tasks before returning.
+                self._ser.write(f"{CSV_END}\r\n")
+
+                self._lineFollowGo.put(0)
+                self._reflectanceMode.put(0)
+                self._leftMotorGo.put(0)
+                self._rightMotorGo.put(0)
+                self._leftMotorSetPoint.put(0)
+                self._rightMotorSetPoint.put(0)
+
+                
+                # Return to main prompt
+                self._state = S0_PROMPT
+
+
+
 
             # Yield the current state per scheduler convention
             yield self._state

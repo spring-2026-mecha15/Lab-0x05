@@ -28,7 +28,7 @@ class task_motor:
     def __init__(self,
                  mot: Motor, enc: Encoder,
                  goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share,
-                 dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorEffort: Share):
+                 dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorVoltage: Share, motorAngVelocity: Share):
         # Initializes a motor task object
         
         # Args:
@@ -60,6 +60,8 @@ class task_motor:
         self._wheelDistance: Share = wheelDistance  #A share of distance traveled by the wheel from observer
         
         self._motorVoltage: Share = motorVoltage  # A share of commanded motor voltage [V]
+
+        self._motorOmega: Share = motorAngVelocity  # A share of commanded motor angular velocity [V]
 
         self._dataValues: Queue = dataValues # A queue object used to store
                                              # collected encoder position
@@ -190,6 +192,11 @@ class task_motor:
                 self._enc.update()
                 self._controller.run()
                 self._wheelDistance.put(self._enc.get_position())
+
+                #Report Motor Angular Velocity
+                omega = self._enc.get_velocity() / WHEEL_RADIUS
+                self._motorOmega.put(omega)                 # Store angular to be reported to output
+
 
                 if self._profiling:
                     vel = self._enc.get_velocity()

@@ -136,7 +136,7 @@ imuAy              = Share("f", name="IMU Accel Y")
 imuAz              = Share("f", name="IMU Accel Z")
 imuGx              = Share("f", name="IMU Gyro X")
 imuGy              = Share("f", name="IMU Gyro Y")
-imuYawRate         = Share("f", name="IMU Gyro Z [rad/s]")
+imuHeadingRate         = Share("f", name="IMU Heading Rate [rad/s]")
 headingRate        = Share("f", name="IMU Heading Rate")
 
 # Observer raw-input shares (unit normalization will happen in observer task)
@@ -146,6 +146,16 @@ wheelDistLeft      = Share("f", name="Wheel Dist Left [mm]")
 wheelDistRight     = Share("f", name="Wheel Dist Right [mm]")
 imuHeading          = Share("f", name="IMU Heading [rad]")
 
+motorOmegaLeft    = Share("f", name="Left Motor Angular Velocity [rad/s]")
+motorOmegaRight   = Share("f", name="Right Motor Angular Velocity [rad/s]")
+
+observerHeading    = Share("f", name="Observer Heading [rad]")
+observerHeadingRate    = Share("f", name="Observer Heading Rate [rad/s]")
+observerOmegaLeft    = Share("f", name="Observer Left Motor Angular Velocity [rad/s]")
+observerOmegaRight    = Share("f", name="Observer Right Motor Angular Velocity [rad/s]")
+observerDistanceLeft    = Share("f", name="Observer Left Wheel Distance [mm]")
+observerDistanceRight    = Share("f", name="Observer Right Wheel Distance [mm]")
+
 # ============================================================================
 # TASK INSTANTIATION
 # ============================================================================
@@ -154,25 +164,12 @@ imuHeading          = Share("f", name="IMU Heading [rad]")
 leftMotorTask = task_motor(
     leftMotor, leftEncoder,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
-    dataValues, timeValues, wheelDistLeft, motorVoltageLeft)
+    dataValues, timeValues, wheelDistLeft, motorVoltageLeft, motorOmegaLeft)
 
 rightMotorTask = task_motor(
     rightMotor, rightEncoder,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues, wheelDistRight, motorVoltageRight)
-
-# Create user interface task for parameter adjustment and data collection
-userTask = task_user(
-    leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
-    rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
-    dataValues, timeValues,
-    centroidValues, centroidTimeValues,
-    reflectanceMode, reflectanceSensor,
-    lineFollowGo, lineFollowSetPoint, lineFollowKp,
-    lineFollowKi, lineCentroid, lineFollowKff,
-    imuMode, imuCalibration,
-    imuAx, imuAy, imuAz, imuGx, imuGy, imuYawRate
-    )
+    dataValues, timeValues, wheelDistRight, motorVoltageRight, motorOmegaRight)
 
 # Create a line follower control instance
 lineFollowTask = task_line_follow(
@@ -200,7 +197,7 @@ reflectanceTask = task_reflectance(
 imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
     imuAx, imuAy, imuAz,
-    imuGx, imuGy, imuYawRate,
+    imuGx, imuGy, imuHeadingRate,
     imuHeading, headingRate
 )
 
@@ -211,8 +208,33 @@ observerTask = task_observer(
     motorVoltageLeft,
     motorVoltageRight,
     imuHeading,
-    imuYawRate
+    imuHeadingRate,
+    observerHeading,
+    observerHeadingRate,
+    observerOmegaLeft,
+    observerOmegaRight,
+    observerDistanceLeft,
+    observerDistanceRight
 )
+
+# Create user interface task for parameter adjustment and data collection
+userTask = task_user(
+    leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
+    rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
+    dataValues, timeValues,
+    centroidValues, centroidTimeValues,
+    reflectanceMode, reflectanceSensor,
+    lineFollowGo, lineFollowSetPoint, lineFollowKp,
+    lineFollowKi, lineCentroid, lineFollowKff,
+    imuMode, imuCalibration,
+    imuAx, imuAy, imuAz, imuGx, imuGy, 
+    #Shares for State Estimation
+    imuHeadingRate, motorVoltageLeft, motorVoltageRight, wheelDistLeft, 
+    wheelDistRight, imuHeading, motorOmegaLeft, motorOmegaRight,
+    observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
+    observerDistanceLeft, observerDistanceRight
+    )
+
 
 
 # ============================================================================
