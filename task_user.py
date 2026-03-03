@@ -191,9 +191,9 @@ class task_user:
                     self._ser.write("| c | Line Sensor Calibration                                           |\r\n")
                     yield
                     self._ser.write("| b | BNO055 IMU menu                                                   |\r\n")
-                    self._ser.write("| l | Follow Line                                                       |\r\r")
-                    self._ser.write("| i | Misc Debug                                                        |\r\r")
-                    self._ser.write("+---+-------------------------------------------------------------------+\r\r")
+                    self._ser.write("| l | Follow Line                                                       |\r\n")
+                    self._ser.write("| i | Misc Debug                                                        |\r\n")
+                    self._ser.write("+---+-------------------------------------------------------------------+\r\n")
                     self._ser.write("\r\n")
                     self._ser.write(">: ")
 

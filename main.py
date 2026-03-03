@@ -13,15 +13,11 @@ import gc
 
 # Hardware drivers and timing
 from pyb import Timer, I2C
-gc.collect()
 
 # Motor and sensor control
 from drivers.motor import Motor
-gc.collect()
 from drivers.encoder import Encoder
-gc.collect()
 from drivers.reflectance import Reflectance_Sensor
-gc.collect()
 from drivers.imu import BNO055
 gc.collect()
 
@@ -35,10 +31,9 @@ gc.collect()
 from task_user import task_user
 gc.collect()
 from task_line_follow import task_line_follow
-gc.collect()
 from task_reflectance import task_reflectance
-gc.collect()
 from task_imu import task_imu
+from task_observer import task_observer
 gc.collect()
 from task_observer import task_observer
 gc.collect()
@@ -46,7 +41,6 @@ gc.collect()
 
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
-gc.collect()
 from cotask import Task, task_list
 gc.collect()
 
@@ -100,21 +94,21 @@ rightMotorKp       = Share("f", name="Right Mot. Kp Gain")
 rightMotorKi       = Share("f", name="Right Mot. Ki Gain")
 
 # Data collection buffers (queues for one-way data transmission)
-dataValues = Queue("f", 50, name="Data Collection Buffer")
-timeValues = Queue("L", 50, name="Time Buffer")
+dataValues         = Queue("f", 50, name="Data Collection Buffer")
+timeValues         = Queue("L", 50, name="Time Buffer")
 
 # Centroid logging buffers (for line-follow plotting)
-centroidValues = Queue("f", 50, name="Centroid Buffer")
+centroidValues     = Queue("f", 50, name="Centroid Buffer")
 centroidTimeValues = Queue("L", 50, name="Centroid Time Buffer")
 
 # Line following sensor shares
-lineCentroid        = Share("f", name="Line Centroid Val")
-lineFound           = Share("B", name="Line Found Flag") # For future use
-lineFollowGo        = Share("B", name="Line Follow Go Flag")
-lineFollowSetPoint  = Share("f", name="Line Follow Set Point")
-lineFollowKp        = Share("f", name="Line Follow Kp Gain")
-lineFollowKi        = Share("f", name="Line Follow Ki Gain")
-lineFollowKff       = Share("f", name="Line Follow Kff Gain")
+lineCentroid       = Share("f", name="Line Centroid Val")
+lineFound          = Share("B", name="Line Found Flag") # For future use
+lineFollowGo       = Share("B", name="Line Follow Go Flag")
+lineFollowSetPoint = Share("f", name="Line Follow Set Point")
+lineFollowKp       = Share("f", name="Line Follow Kp Gain")
+lineFollowKi       = Share("f", name="Line Follow Ki Gain")
+lineFollowKff      = Share("f", name="Line Follow Kff Gain")
 
 # Load default gains
 # Note: tasks will try to read from
