@@ -152,12 +152,12 @@ imuHeading          = Share("f", name="IMU Heading [rad]")
 
 # Create motor control task objects with shared communication channels
 leftMotorTask = task_motor(
-    leftMotor, leftEncoder, wheelDistLeft,
+    leftMotor, leftEncoder,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     dataValues, timeValues, wheelDistLeft, motorVoltageLeft)
 
 rightMotorTask = task_motor(
-    rightMotor, rightEncoder, wheelDistRight,
+    rightMotor, rightEncoder,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues, wheelDistRight, motorVoltageRight)
 
@@ -167,7 +167,7 @@ userTask = task_user(
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues,
     centroidValues, centroidTimeValues,
-    reflectanceMode,
+    reflectanceMode, reflectanceSensor,
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
     lineFollowKi, lineCentroid, lineFollowKff,
     imuMode, imuCalibration,

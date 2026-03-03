@@ -1,0 +1,1 @@
+{"motor": {"kp": 0.15, "ki": 4.0}, "line_follower": {"set_point": 100.0, "kff": 0.0, "kp": 0.4, "ki": 0.3}}
