@@ -12,23 +12,33 @@
 import gc
 
 # Hardware drivers and timing
+print("Importing Micropyhthon")
 from pyb import Timer, I2C
+gc.collect()
+print(gc.mem_free())
+print("Loading Task User")
+from task_user import task_user
+gc.collect()
+print(gc.mem_free())
 
+print("Loading motor and sensor control")
 # Motor and sensor control
 from drivers.motor import Motor
 from drivers.encoder import Encoder
 from drivers.reflectance import Reflectance_Sensor
 from drivers.imu import BNO055
 gc.collect()
+print(gc.mem_free())
 
+print("Loading Constants")
 # Configuration constants
 from constants import *
 gc.collect()
+print(gc.mem_free())
 
+print("Loading other tasks")
 # Task implementations
 from task_motor import task_motor
-gc.collect()
-from task_user import task_user
 gc.collect()
 from task_line_follow import task_line_follow
 from task_reflectance import task_reflectance
@@ -37,13 +47,14 @@ from task_observer import task_observer
 gc.collect()
 from task_observer import task_observer
 gc.collect()
+print(gc.mem_free())
 
-
+print("Loaing Scheduling")
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
 from cotask import Task, task_list
 gc.collect()
-
+print(gc.mem_free())
 
 
 # ============================================================================
