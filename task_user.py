@@ -23,6 +23,7 @@ from pyb import I2C
 from drivers.imu import BNO055, NDOF_OP_MODE
 import time
 import gc
+from utime import ticks_us, ticks_diff
 from drivers.reflectance import Reflectance_Sensor
 
 # State constants (use micropython.const for efficiency on embedded)
@@ -99,6 +100,7 @@ class task_user:
         imuHeading,            # type: Share
         motorOmegaLeft,        # type: Share
         motorOmegaRight,       # type: Share
+        observerCenterDistance,# type: Share
         observerHeading,       # type: Share
         observerHeadingRate,   # type: Share
         observerOmegaLeft,     # type: Share
@@ -161,6 +163,7 @@ class task_user:
         self._imuHeading = imuHeading
         self._motorOmegaLeft = motorOmegaLeft
         self._motorOmegaRight = motorOmegaRight
+        self._observerCenterDistance = observerCenterDistance
         self._observerHeading = observerHeading
         self._observerHeadingRate = observerHeadingRate
         self._observerOmegaLeft = observerOmegaLeft
@@ -278,6 +281,11 @@ class task_user:
                     elif inChar in {"l", "L"}:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S8_LINEFOLLOW
+
+                    # State Estimation Compare
+                    elif inChar in {"e", "E"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        self._state = S10_STATE_ESTIMATION
 
                     elif inChar in {"b", "B"}:
                         self._ser.write(f"{inChar}\r\n")
@@ -822,17 +830,48 @@ class task_user:
 
                 # Enable line following controller
                 self._lineFollowGo.put(1)
+                # Run IMU continuously while in this mode
+                self._imuMode.put(0xFF)
 
                 self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
 
                 # Wait for newline or carriage return, non-blocking (yielding)
                 self._ser.write(f"{CSV_BEGIN}\r\n")
+                self._ser.write(
+                    "Time (ms),"
+                    "centerDistance_sensor (mm),centerDistance_observer (mm),"
+                    "distL_sensor (mm),distL_observer (mm),"
+                    "distR_sensor (mm),distR_observer (mm),"
+                    "heading_sensor,heading_observer,"
+                    "headingRate_sensor,headingRate_observer,"
+                    "omegaL_sensor (rad/s),omegaL_observer (rad/s),"
+                    "omegaR_sensor (rad/s),omegaR_observer (rad/s)\r\n"
+                )
+
+                stream_decimation = 5
+                sample_idx = 0
+                start_time = ticks_us()
 
                 while True:
-                    
-                    #Add Logic Here
-
-
+                    if (sample_idx % stream_decimation) == 0:
+                        t_ms = int(ticks_diff(ticks_us(), start_time) / 1000)
+                        s_l_sensor = self._wheelDistLeft.get()
+                        s_r_sensor = self._wheelDistRight.get()
+                        s_l_obs = self._observerDistanceLeft.get()
+                        s_r_obs = self._observerDistanceRight.get()
+                        centerDistance_sensor = 0.5 * (s_l_sensor + s_r_sensor)
+                        centerDistance_observer = self._observerCenterDistance.get()
+                        self._ser.write(
+                            f"{t_ms},"
+                            f"{centerDistance_sensor},{centerDistance_observer},"
+                            f"{s_l_sensor},{s_l_obs},"
+                            f"{s_r_sensor},{s_r_obs},"
+                            f"{self._imuHeading.get()},{self._observerHeading.get()},"
+                            f"{self._Gz.get()},{self._observerHeadingRate.get()},"
+                            f"{self._motorOmegaLeft.get()},{self._observerOmegaLeft.get()},"
+                            f"{self._motorOmegaRight.get()},{self._observerOmegaRight.get()}\r\n"
+                        )
+                    sample_idx += 1
 
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
@@ -848,6 +887,7 @@ class task_user:
 
                 self._lineFollowGo.put(0)
                 self._reflectanceMode.put(0)
+                self._imuMode.put(0)
                 self._leftMotorGo.put(0)
                 self._rightMotorGo.put(0)
                 self._leftMotorSetPoint.put(0)

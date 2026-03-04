@@ -151,6 +151,7 @@ motorOmegaRight   = Share("f", name="Right Motor Angular Velocity [rad/s]")
 
 observerHeading    = Share("f", name="Observer Heading [rad]")
 observerHeadingRate    = Share("f", name="Observer Heading Rate [rad/s]")
+observerCenterDistance = Share("f", name="Observer Center Distance [mm]")
 observerOmegaLeft    = Share("f", name="Observer Left Motor Angular Velocity [rad/s]")
 observerOmegaRight    = Share("f", name="Observer Right Motor Angular Velocity [rad/s]")
 observerDistanceLeft    = Share("f", name="Observer Left Wheel Distance [mm]")
@@ -209,6 +210,7 @@ observerTask = task_observer(
     motorVoltageRight,
     imuHeading,
     imuHeadingRate,
+    observerCenterDistance,
     observerHeading,
     observerHeadingRate,
     observerOmegaLeft,
@@ -231,7 +233,7 @@ userTask = task_user(
     #Shares for State Estimation
     imuHeadingRate, motorVoltageLeft, motorVoltageRight, wheelDistLeft, 
     wheelDistRight, imuHeading, motorOmegaLeft, motorOmegaRight,
-    observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
+    observerCenterDistance, observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
     observerDistanceLeft, observerDistanceRight
     )
 

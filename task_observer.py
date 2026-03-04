@@ -12,6 +12,7 @@ class task_observer:
             voltageRight:   Share,
             heading:       Share,
             headingRate:   Share,
+            observerCenterDistance: Share,
             observerHeading: Share,
             observerHeadingRate: Share,
             observerOmegaLeft: Share,
@@ -33,6 +34,7 @@ class task_observer:
         self.B_D = np.array(B_D)
         self.C_D = np.array(C_D)
         
+        self._observerCenterDistance = observerCenterDistance
         self._observerHeading = observerHeading
         self._observerHeadingRate = observerHeadingRate
         self._observerOmegaLeft = observerOmegaLeft
@@ -84,6 +86,7 @@ class task_observer:
                 self.psi_dot.get(),
             )
             # Publish observer states as scalar shares.
+            self._observerCenterDistance.put(float(self.x_hat[0][0]))
             self._observerDistanceLeft.put(float(self.y_hat[0][0]))
             self._observerDistanceRight.put(float(self.y_hat[1][0]))
             self._observerHeading.put(float(self.y_hat[2][0]))
