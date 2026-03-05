@@ -848,7 +848,7 @@ class task_user:
                     "omegaR_sensor (rad/s),omegaR_observer (rad/s),omegaR_error (rad/s)\r\n"
                 )
 
-                stream_decimation = 5
+                stream_decimation = 1
                 sample_idx = 0
                 start_time = ticks_us()
 
@@ -879,7 +879,6 @@ class task_user:
                         omegaL_error = motorOmegaLeft - observerOmegaLeft
                         omegaR_error = motorOmegaRight - observerOmegaRight
                         
-                        """
                         line = (
                             "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\r\n".format(
                                 t_ms,
@@ -892,7 +891,8 @@ class task_user:
                                 motorOmegaRight, observerOmegaRight, omegaR_error,
                             )
                         )
-                        self._ser.write(line)"""
+                        self._ser.write(line)
+                        """
                         error_line = (
                             "t_ms={}, centerDistance_error={}, distL_error={}, distR_error={}, "
                             "heading_error={}, headingRate_error={}, omegaL_error={}, omegaR_error={}\r\n".format(
@@ -905,8 +905,8 @@ class task_user:
                                 omegaL_error,
                                 omegaR_error,
                             )
-                        )
-                        self._ser.write(error_line)
+                        ))
+                        self._ser.write(error_line)"""
                     sample_idx += 1
 
                     if self._ser.any():

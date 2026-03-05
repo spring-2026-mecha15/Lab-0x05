@@ -185,6 +185,7 @@ class task_imu:
                 #mx, my, mz = self._imu.magnetic()
 
                 self._heading.put(h)
+                self._headingRate.put(gz)
 
                 self._gyroX.put(gx)
                 self._gyroY.put(gy)
@@ -248,6 +249,5 @@ class task_imu:
                 self._mode.put(0)
 
                 self._state = S2_IDLE
-
-
+            
             yield self._state

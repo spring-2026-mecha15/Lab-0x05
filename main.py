@@ -262,15 +262,15 @@ task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
                       priority=5, period=20, profile=True))
 task_list.append(Task(userTask.run, name="User Int. Task",
-                      priority=0, period=0, profile=True))
+                      priority=1, period=0, profile=True))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
-                      priority=4, period=15, profile=True))
-task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=15, profile=True))
+task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
+                      priority=4, period=15, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=2, period=20, profile=True))
-task_list.append(Task(observerTask.run, name="Observer Task",
                       priority=0, period=20, profile=True))
+task_list.append(Task(observerTask.run, name="Observer Task",
+                      priority=1, period=50, profile=True))
 
 def garbage_collect():
     while True:

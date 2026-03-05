@@ -2,3 +2,5 @@ __pycache__/
 desktop/data/
 desktop/__pycache__/
 .venv/
+test.csv
+test.csv
