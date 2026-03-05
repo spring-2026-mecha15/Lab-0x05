@@ -839,13 +839,15 @@ class task_user:
                 self._ser.write(f"{CSV_BEGIN}\r\n")
                 self._ser.write(
                     "Time (ms),"
-                    "centerDistance_sensor (mm),centerDistance_observer (mm),centerDistance_error (mm),"
-                    "distL_sensor (mm),distL_observer (mm),distL_error (mm),"
-                    "distR_sensor (mm),distR_observer (mm),distR_error (mm),"
-                    "heading_sensor,heading_observer,heading_error,"
-                    "headingRate_sensor,headingRate_observer,headingRate_error,"
-                    "omegaL_sensor (rad/s),omegaL_observer (rad/s),omegaL_error (rad/s),"
-                    "omegaR_sensor (rad/s),omegaR_observer (rad/s),omegaR_error (rad/s)\r\n"
+                    "centerDistance_sensor (mm),centerDistance_observer (mm),"
+                    "distL_sensor (mm),distL_observer (mm),"
+                    "distR_sensor (mm),distR_observer (mm),"
+                    "heading_sensor,heading_observer,"
+                    "headingRate_sensor,headingRate_observer,"
+                    "omegaL_sensor (rad/s),omegaL_observer (rad/s),"
+                    "omegaR_sensor (rad/s),omegaR_observer (rad/s),"
+                    "centerDistance_error (mm),distL_error (mm),distR_error (mm),"
+                    "heading_error,headingRate_error,omegaL_error (rad/s),omegaR_error (rad/s)\r\n"
                 )
 
                 stream_decimation = 1
@@ -882,13 +884,15 @@ class task_user:
                         line = (
                             "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\r\n".format(
                                 t_ms,
-                                centerDistance_sensor, centerDistance_observer, centerDistance_error,
-                                wheelDistLeft, observerDistanceLeft, distL_error,
-                                wheelDistRight, observerDistanceRight, distR_error,
-                                imuHeading, observerHeading, heading_error,
-                                imuHeadingRate, observerHeadingRate, headingRate_error,
-                                motorOmegaLeft, observerOmegaLeft, omegaL_error,
-                                motorOmegaRight, observerOmegaRight, omegaR_error,
+                                centerDistance_sensor, centerDistance_observer,
+                                wheelDistLeft, observerDistanceLeft,
+                                wheelDistRight, observerDistanceRight,
+                                imuHeading, observerHeading,
+                                imuHeadingRate, observerHeadingRate,
+                                motorOmegaLeft, observerOmegaLeft,
+                                motorOmegaRight, observerOmegaRight,
+                                centerDistance_error, distL_error, distR_error,
+                                heading_error, headingRate_error, omegaL_error, omegaR_error,
                             )
                         )
                         self._ser.write(line)

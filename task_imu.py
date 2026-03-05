@@ -41,6 +41,7 @@ class task_imu:
         self._imu = imuSensor
 
         self._calibration_saved = False
+        self._run_mode_active = False
 
         print('IMU Task initialized')
 
@@ -141,6 +142,7 @@ class task_imu:
 
                 # Attempt to restore saved calibration; otherwise calibrate live.
                 loaded = yield from self._load_calibration()
+
                 if loaded:
                     # print('DEBUG: Calibration restored')
                     self._calibration_saved = True
@@ -165,17 +167,28 @@ class task_imu:
                 mode = self._mode.get()
 
                 if mode == 1:
-                    self._state = S4_SAVE_CALIB
-                elif mode == 2:
+                    self._run_mode_active = False
                     self._state = S5_LOAD_CALIB
+                elif mode == 2:
+                    self._run_mode_active = False
+                    self._state = S4_SAVE_CALIB
                 elif mode == 3:
+                    self._run_mode_active = False
                     self._state = S6_TARE
                 elif mode == 4:
+                    self._run_mode_active = False
                     self._state = S7_READ_VALS
                 elif mode == 5:
+                    self._run_mode_active = False
                     self._state = S8_GET_CALIB_STATE
                 elif mode == 0xFF:
+                    if not self._run_mode_active:
+                        # Tare heading once when switching into run mode.
+                        yield from self._imu.tare_euler()
+                        self._run_mode_active = True
                     self._state = S3_RUN_NDOF
+                else:
+                    self._run_mode_active = False
 
 
             elif self._state == S3_RUN_NDOF:

@@ -148,14 +148,13 @@ imuAz              = Share("f", name="IMU Accel Z")
 imuGx              = Share("f", name="IMU Gyro X")
 imuGy              = Share("f", name="IMU Gyro Y")
 imuHeadingRate         = Share("f", name="IMU Heading Rate [rad/s]")
-headingRate        = Share("f", name="IMU Heading Rate")
+imuHeading          = Share("f", name="IMU Heading [rad]")
 
 # Observer raw-input shares (unit normalization will happen in observer task)
 motorVoltageLeft    = Share("f", name="Left Motor Voltage [V]")
 motorVoltageRight   = Share("f", name="Right Motor Voltage [V]")
 wheelDistLeft      = Share("f", name="Wheel Dist Left [mm]")
 wheelDistRight     = Share("f", name="Wheel Dist Right [mm]")
-imuHeading          = Share("f", name="IMU Heading [rad]")
 
 motorOmegaLeft    = Share("f", name="Left Motor Angular Velocity [rad/s]")
 motorOmegaRight   = Share("f", name="Right Motor Angular Velocity [rad/s]")
@@ -210,7 +209,7 @@ imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
     imuAx, imuAy, imuAz,
     imuGx, imuGy, imuHeadingRate,
-    imuHeading, headingRate
+    imuHeading, imuHeading
 )
 
 # Create an Observer instance
@@ -268,7 +267,7 @@ task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=4, period=15, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=0, period=20, profile=True))
+                      priority=1, period=20, profile=True))
 task_list.append(Task(observerTask.run, name="Observer Task",
                       priority=1, period=50, profile=True))
 
