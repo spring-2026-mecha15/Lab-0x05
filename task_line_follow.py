@@ -56,6 +56,8 @@ class task_line_follow:
         self._controller.set_point = 0           # Setpoint is 0: corresponding to 
                                                  # keeping the line centered under romi
 
+        self._state = 0
+
         print("Line follower task instantiated")
 
     def _load_gains(self) -> bool:
@@ -100,13 +102,11 @@ class task_line_follow:
 
     def run(self):
         # Track previous goflag state to determine when flag was just set
-        oldGo = False
-
         while True:
-            if self._goFlag.get():
+            if self._state == 0:
+                if self._goFlag.get():
 
-                # Update line follow gains once each time go flag is set
-                if not(oldGo):
+                    # Update line follow gains once each time go flag is set
                     self._controller.Kp = self._Kp.get()
                     self._controller.Ki = self._Ki.get()
                     self._nominalSetPoint = self._setPoint.get() # Setpoint in mm/s
@@ -115,19 +115,20 @@ class task_line_follow:
                     radius = 300 # radius of test circle in mm
                     omega = self._nominalSetPoint / radius
                     self._controller.set_feed_forward(omega, self._Kff.get())
-                    
 
                     self._controller.reset()
                     
-                    oldGo = True
-                
-                # Run line follower PI control
-                # input will be read from the centroid share
-                # output will be sent to `plant_cb`
-                self._controller.run()
+                    self._state = 1
 
-            else:
-                oldGo = False
+            elif self._state == 1:
+                if not self._goFlag.get():
+                    self._state = 0
+                else:
+                    # Run line follower PI control
+                    # input will be read from the centroid share
+                    # output will be sent to `plant_cb`
+                    self._controller.run()
+
 
             yield self._state
 

@@ -84,7 +84,7 @@ class task_user:
         lineFollowKp,          # type: Share
         lineFollowKi,          # type: Share
         lineCentroid,          # type: Share
-        lineFollowKff,          # type: Share
+        lineFollowKff,         # type: Share
         imuMode,               # type: Share
         imuCalibration,        # type: Share
         imuAx,                 # type: Share
@@ -92,7 +92,7 @@ class task_user:
         imuAz,                 # type: Share
         imuGx,                 # type: Share
         imuGy,                 # type: Share
-        imuHeadingRate,         # type: Share
+        imuHeadingRate,        # type: Share
         motorVoltageLeft,      # type: Share
         motorVoltageRight,     # type: Share
         wheelDistLeft,         # type: Share
