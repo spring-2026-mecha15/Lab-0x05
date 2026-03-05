@@ -180,9 +180,9 @@ class task_imu:
 
             elif self._state == S3_RUN_NDOF:
                 gx, gy, gz = self._imu.gyro()
-                ax, ay, az = self._imu.acceleration()
-                mx, my, mz = self._imu.magnetic()
                 h, r, p = self._imu.euler()
+                #ax, ay, az = self._imu.acceleration()
+                #mx, my, mz = self._imu.magnetic()
 
                 self._heading.put(h)
 
@@ -190,11 +190,10 @@ class task_imu:
                 self._gyroY.put(gy)
                 self._gyroZ.put(gz)
 
-                self._accelX.put(ax)
-                self._accelY.put(ay)
-                self._accelZ.put(az)
-
-                # self._heading.put(mz)
+                #self._accelX.put(ax)
+                #self._accelY.put(ay)
+                #self._accelZ.put(az)
+                #self._heading.put(mz)
 
                 self._state = S2_IDLE
             

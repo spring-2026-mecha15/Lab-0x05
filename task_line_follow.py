@@ -85,6 +85,7 @@ class task_line_follow:
             print(f"LF Ki not found. Using default: {DEFAULT_LF_KI}")
         if lf_setpoint is not None:
             self._nominalSetPoint = float(lf_setpoint)
+            self._setPoint.put(float(lf_setpoint))
             print(f"Read LF setpoint: {float(lf_setpoint)}")
 
         if lf_kff is not None:
