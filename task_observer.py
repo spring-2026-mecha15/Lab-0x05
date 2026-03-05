@@ -45,6 +45,7 @@ class task_observer:
 
         self.x_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
         self.y_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
+        self.u_aug = np.array([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]])
 
     def update(self, u_L, u_R, s_L, s_R, psi, psi_dot):
         
@@ -66,11 +67,14 @@ class task_observer:
         x_hat   : ulab.numpy.ndarray : The new 4x1 state estimate vector
         """
 
-        u_aug = np.array([
-            [u_L], [u_R], [s_L], [s_R], [psi], [psi_dot]
-        ])
+        self.u_aug[0][0] = u_L
+        self.u_aug[1][0] = u_R
+        self.u_aug[2][0] = s_L
+        self.u_aug[3][0] = s_R
+        self.u_aug[4][0] = psi
+        self.u_aug[5][0] = psi_dot
         
-        self.x_hat = np.dot(self.A_D, self.x_hat) + np.dot(self.B_D, u_aug)
+        self.x_hat = np.dot(self.A_D, self.x_hat) + np.dot(self.B_D, self.u_aug)
         self.y_hat = np.dot(self.C_D, self.x_hat)
 
         return

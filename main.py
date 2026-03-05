@@ -269,8 +269,8 @@ task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=5, period=15, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
                       priority=2, period=20, profile=True))
-#task_list.append(Task(observerTask.run, name="Observer Task",
-                  #    priority=0, period=20, profile=True))
+task_list.append(Task(observerTask.run, name="Observer Task",
+                      priority=0, period=20, profile=True))
 
 def garbage_collect():
     while True:
