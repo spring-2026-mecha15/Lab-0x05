@@ -36,6 +36,8 @@ class Reflectance_Sensor:
         # Load calibration from file into memory (cached for fast access)
         self._calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
+        self._samples = [[0]*self._numSensors]*self._SAMPLE_COUNT
+
     def _read_raw(self) -> list[int]:
         """Read all sensors once and return raw ADC values."""
         return [sensor.read() for sensor in self._sensors]
@@ -145,11 +147,11 @@ class Reflectance_Sensor:
         calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
         sample_count = self._SAMPLE_COUNT
-        samples = [] 
+        self._samples = [[0]*self._numSensors] * sample_count
 
         for i in range(sample_count):
             readings = self._read_raw()
-            samples.append(readings)  # collect one sample set
+            self._samples.append(readings)  # collect one sample set
 
             # Calculate the ticks in ms before continuing to sample
             deadline_ms = utime.ticks_add(utime.ticks_ms(), self._SAMPLE_PERIOD_MS)
@@ -158,8 +160,9 @@ class Reflectance_Sensor:
                 yield i
 
         for i in range(self._numSensors):
-            avg = sum(sample[i] for sample in samples) / sample_count
+            avg = sum(sample[i] for sample in self._samples) / sample_count
             calibration[i][mode] = avg
+            print(f'  {i}: {avg}')
 
         with open(self._CALIBRATION_FILE, "w") as f:
             json.dump(calibration, f)

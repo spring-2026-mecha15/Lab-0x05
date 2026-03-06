@@ -20,7 +20,7 @@ CALIB_PROFILE_LEN = const(22)
 
 # Registers 
 CHIP_ID_REG = const(0x00)           # BNO055 CHIP ID
-PAGE_ID_REG = const(0x07)           # Page ID
+# PAGE_ID_REG = const(0x07)           # Page ID
 ACC_DATA_X_LSB_REG = const(0x08)    # Acceleration Data X
 MAG_DATA_X_LSB_REG = const(0x0E)    # Magnetometer Data X
 GYR_DATA_X_LSB_REG = const(0x14)    # Gyroscope Data X
@@ -41,17 +41,17 @@ POWER_MODE_NORMAL = const(0x00)     # Normal Power Mode
 
 # Operation modes
 CONFIG_OP_MODE = const(0x00)        # Configuration mode
-ACCONLY_OP_MODE = const(0x01)       # Accelerometer only
-MAGONLY_OP_MODE = const(0x02)       # Magnetometer only
-GYRONLY_OP_MODE = const(0x03)       # Gyroscope only
-ACCMAG_OP_MODE = const(0x04)        # Accelerometer + Magnetometer
-ACCGYRO_OP_MODE = const(0x05)       # Accelerometer + Gyroscope
-MAGGYRO_OP_MODE = const(0x06)       # Magnetometer + Gyroscope
-AMG_OP_MODE = const(0x07)           # Accelerometer + Magnetometer + Gyroscope
-IMUPLUS_OP_MODE = const(0x08)       # Inertial Measurement Unit
-COMPASS_OP_MODE = const(0x09)       # Compass
-M4G_OP_MODE = const(0x0A)           # Magnetometer for Gyroscope
-NDOF_FMC_OFF_OP_MODE = const(0x0B)  # Nine degrees of freedom with fast magnetic calibration off
+# ACCONLY_OP_MODE = const(0x01)       # Accelerometer only
+# MAGONLY_OP_MODE = const(0x02)       # Magnetometer only
+# GYRONLY_OP_MODE = const(0x03)       # Gyroscope only
+# ACCMAG_OP_MODE = const(0x04)        # Accelerometer + Magnetometer
+# ACCGYRO_OP_MODE = const(0x05)       # Accelerometer + Gyroscope
+# MAGGYRO_OP_MODE = const(0x06)       # Magnetometer + Gyroscope
+# AMG_OP_MODE = const(0x07)           # Accelerometer + Magnetometer + Gyroscope
+# IMUPLUS_OP_MODE = const(0x08)       # Inertial Measurement Unit
+# COMPASS_OP_MODE = const(0x09)       # Compass
+# M4G_OP_MODE = const(0x0A)           # Magnetometer for Gyroscope
+# NDOF_FMC_OFF_OP_MODE = const(0x0B)  # Nine degrees of freedom with fast magnetic calibration off
 NDOF_OP_MODE = const(0x0C)          # Nine degrees of freedom
 
 # Scaling factors (assuming unit selection defaults: m/s^2, rad, rps, Celsius)
@@ -70,16 +70,23 @@ class BNO055:
         self.accel_tare = (0.0, 0.0, 0.0)
         self.gyro_tare = (0.0, 0.0, 0.0)
         self.euler_tare = (0.0, 0.0, 0.0)
+        self._buf1 = bytearray(1)
+        self._vec3_buf = bytearray(6)
+        self._quat_buf = bytearray(8)
 
     # ---------- Driver Helpers ----------
     def _read_byte(self, register):
-        return self.i2c.mem_read(1, self.address, register)[0]
+        self.i2c.mem_read(self._buf1, self.address, register)
+        return self._buf1[0]
 
     def _write_byte(self, register, value):
         self.i2c.mem_write(value & 0xFF, self.address, register)
 
-    def _read_bytes(self, register, n):
-        return self.i2c.mem_read(n, self.address, register)
+    def _read_bytes(self, register, n, out_buf=None):
+        if out_buf is None:
+            return self.i2c.mem_read(n, self.address, register)
+        self.i2c.mem_read(out_buf, self.address, register)
+        return out_buf
 
     def _write_bytes(self, register, data):
         self.i2c.mem_write(data, self.address, register)
@@ -90,7 +97,7 @@ class BNO055:
         return v - 65536 if v & 0x8000 else v
 
     def _read_vec3_int16(self, base_reg):
-        b = self._read_bytes(base_reg, 6)
+        b = self._read_bytes(base_reg, 6, self._vec3_buf)
         x = self._bytes_to_int16(b[0], b[1])
         y = self._bytes_to_int16(b[2], b[3])
         z = self._bytes_to_int16(b[4], b[5])
@@ -309,7 +316,7 @@ class BNO055:
         return (h - th, r - tr, p - tp)
 
     def quaternion(self):
-        b = self._read_bytes(QUA_DATA_W_LSB_REG, 8)
+        b = self._read_bytes(QUA_DATA_W_LSB_REG, 8, self._quat_buf)
         w = self._bytes_to_int16(b[0], b[1]) * SCALE_QUAT
         x = self._bytes_to_int16(b[2], b[3]) * SCALE_QUAT
         y = self._bytes_to_int16(b[4], b[5]) * SCALE_QUAT

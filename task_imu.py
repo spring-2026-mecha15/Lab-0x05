@@ -21,20 +21,12 @@ S8_GET_CALIB_STATE = const(8)
 
 class task_imu:
     def __init__(self, imuSensor: BNO055, mode: Share, calibration: Share,
-                 accelX: Share, accelY: Share, accelZ: Share,
-                 gyroX: Share, gyroY: Share, gyroZ: Share,
                  heading: Share, headingRate: Share
                  ):
 
         self._mode = mode
         self._calibration = calibration
 
-        self._accelX = accelX 
-        self._accelY = accelY
-        self._accelZ = accelZ
-        self._gyroX = gyroX
-        self._gyroY = gyroY
-        self._gyroZ = gyroZ
         self._heading = heading
         self._headingRate = headingRate
 
@@ -200,10 +192,6 @@ class task_imu:
                 self._heading.put(h)
                 self._headingRate.put(gz)
 
-                self._gyroX.put(gx)
-                self._gyroY.put(gy)
-                self._gyroZ.put(gz)
-
                 #self._accelX.put(ax)
                 #self._accelY.put(ay)
                 #self._accelZ.put(az)
@@ -233,17 +221,13 @@ class task_imu:
 
             elif self._state == S7_READ_VALS:
                 gx, gy, gz = self._imu.gyro()
-                ax, ay, az = self._imu.acceleration()
-                mx, my, mz = self._imu.magnetic()
+                h, r, p = self._imu.euler()
+                #ax, ay, az = self._imu.acceleration()
+                #mx, my, mz = self._imu.magnetic()
 
-                self._gyroX.put(gx)
-                self._gyroY.put(gy)
-                self._gyroZ.put(gz)
-
-                self._accelX.put(ax)
-                self._accelY.put(ay)
-                self._accelZ.put(az)
-
+                self._heading.put(h)
+                self._headingRate.put(gz)
+                
                 self._mode.put(0)
 
                 self._state = S2_IDLE

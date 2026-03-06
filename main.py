@@ -15,11 +15,11 @@ import gc
 print("Importing Micropyhthon")
 from pyb import Timer, I2C
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 print("Loading Task User")
 from task_user import task_user
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 
 print("Loading motor and sensor control")
 # Motor and sensor control
@@ -28,13 +28,13 @@ from drivers.encoder import Encoder
 from drivers.reflectance import Reflectance_Sensor
 from drivers.imu import BNO055
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 
 print("Loading Constants")
 # Configuration constants
 from constants import *
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 
 print("Loading other tasks")
 # Task implementations
@@ -47,14 +47,14 @@ from task_observer import task_observer
 gc.collect()
 from task_observer import task_observer
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 
 print("Loaing Scheduling")
 # Inter-task communication and scheduling
 from task_share import Share, Queue, show_all
 from cotask import Task, task_list
 gc.collect()
-print(gc.mem_free())
+print(f"Mem free: {gc.mem_free()}")
 
 
 # ============================================================================
@@ -142,11 +142,6 @@ reflectanceMode    = Share("B", name="Reflectance Sensor Go Flag")
 # IMU shares
 imuMode            = Share("B", name="IMU Mode")
 imuCalibration     = Share("B", name="IMU Calibration Values")
-imuAx              = Share("f", name="IMU Accel X")
-imuAy              = Share("f", name="IMU Accel Y")
-imuAz              = Share("f", name="IMU Accel Z")
-imuGx              = Share("f", name="IMU Gyro X")
-imuGy              = Share("f", name="IMU Gyro Y")
 imuHeadingRate         = Share("f", name="IMU Heading Rate [rad/s]")
 imuHeading          = Share("f", name="IMU Heading [rad]")
 
@@ -207,9 +202,7 @@ reflectanceTask = task_reflectance(
 # Create an IMU sensor instance
 imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
-    imuAx, imuAy, imuAz,
-    imuGx, imuGy, imuHeadingRate,
-    imuHeading, imuHeading
+    imuHeading, imuHeadingRate
 )
 
 # Create an Observer instance
@@ -239,7 +232,6 @@ userTask = task_user(
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
     lineFollowKi, lineCentroid, lineFollowKff,
     imuMode, imuCalibration,
-    imuAx, imuAy, imuAz, imuGx, imuGy, 
     #Shares for State Estimation
     imuHeadingRate, motorVoltageLeft, motorVoltageRight, wheelDistLeft, 
     wheelDistRight, imuHeading, motorOmegaLeft, motorOmegaRight,
@@ -277,7 +269,7 @@ def garbage_collect():
         yield 0
 
 task_list.append(Task(garbage_collect, name="Garbage collection",
-                      priority=0, period=10000, profile=True))
+                      priority=0, period=5000, profile=True))
 
 gc.collect()
 
