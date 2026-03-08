@@ -486,7 +486,7 @@ class task_user:
                 ############################################
                 # LINE SENSOR CENTROID VISUALIZATION
                 ############################################
-                raw, calibrated, value = self._reflectanceSensor.get_values()
+                raw, calibrated, value, found = self._reflectanceSensor.get_values()
                 self._ser.write(f" RAW   CALIBRATED  \r\n")
                 for i in range(len(raw)):
                     self._ser.write(f"{raw[i]:04d}")
@@ -495,7 +495,8 @@ class task_user:
                         self._ser.write('+')
                     self._ser.write("\r\n")
 
-                self._ser.write(f"Measured centroid: {value:.2f}\r\n\n")
+                self._ser.write(f"Measured centroid: {value:.2f}\r\n")
+                self._ser.write(f"Line detected: {"TRUE" if found else "FALSE"}\r\n\n")
                 # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
                 # value = yield from multichar_input(self._ser)
                 ############################################
