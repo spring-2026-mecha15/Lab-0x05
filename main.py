@@ -47,6 +47,8 @@ from task_observer import task_observer
 gc.collect()
 from task_observer import task_observer
 gc.collect()
+from task_competition import task_competition
+gc.collect()
 print(f"Mem free: {gc.mem_free()}")
 
 print("Loaing Scheduling")
@@ -137,30 +139,33 @@ rightMotorKi.put(DEFAULT_MOTOR_KI)
 #   - 1: Calibration Mode (dark)
 #   - 2: Calibration Mode (light)
 #   - 3: Running
-reflectanceMode    = Share("B", name="Reflectance Sensor Go Flag")
+reflectanceMode        = Share("B", name="Reflectance Sensor Go Flag")
 
 # IMU shares
-imuMode            = Share("B", name="IMU Mode")
-imuCalibration     = Share("B", name="IMU Calibration Values")
+imuMode                = Share("B", name="IMU Mode")
+imuCalibration         = Share("B", name="IMU Calibration Values")
 imuHeadingRate         = Share("f", name="IMU Heading Rate [rad/s]")
-imuHeading          = Share("f", name="IMU Heading [rad]")
+imuHeading             = Share("f", name="IMU Heading [rad]")
 
 # Observer raw-input shares (unit normalization will happen in observer task)
-motorVoltageLeft    = Share("f", name="Left Motor Voltage [V]")
-motorVoltageRight   = Share("f", name="Right Motor Voltage [V]")
-wheelDistLeft      = Share("f", name="Wheel Dist Left [mm]")
-wheelDistRight     = Share("f", name="Wheel Dist Right [mm]")
+motorVoltageLeft       = Share("f", name="Left Motor Voltage [V]")
+motorVoltageRight      = Share("f", name="Right Motor Voltage [V]")
+wheelDistLeft          = Share("f", name="Wheel Dist Left [mm]")
+wheelDistRight         = Share("f", name="Wheel Dist Right [mm]")
 
-motorOmegaLeft    = Share("f", name="Left Motor Angular Velocity [rad/s]")
-motorOmegaRight   = Share("f", name="Right Motor Angular Velocity [rad/s]")
+motorOmegaLeft         = Share("f", name="Left Motor Angular Velocity [rad/s]")
+motorOmegaRight        = Share("f", name="Right Motor Angular Velocity [rad/s]")
 
-observerHeading    = Share("f", name="Observer Heading [rad]")
+observerGoFlag         = Share("B", name="Observer go flag")
+observerHeading        = Share("f", name="Observer Heading [rad]")
 observerHeadingRate    = Share("f", name="Observer Heading Rate [rad/s]")
 observerCenterDistance = Share("f", name="Observer Center Distance [mm]")
-observerOmegaLeft    = Share("f", name="Observer Left Motor Angular Velocity [rad/s]")
-observerOmegaRight    = Share("f", name="Observer Right Motor Angular Velocity [rad/s]")
-observerDistanceLeft    = Share("f", name="Observer Left Wheel Distance [mm]")
-observerDistanceRight    = Share("f", name="Observer Right Wheel Distance [mm]")
+observerOmegaLeft      = Share("f", name="Observer Left Motor Angular Velocity [rad/s]")
+observerOmegaRight     = Share("f", name="Observer Right Motor Angular Velocity [rad/s]")
+observerDistanceLeft   = Share("f", name="Observer Left Wheel Distance [mm]")
+observerDistanceRight  = Share("f", name="Observer Right Wheel Distance [mm]")
+
+competitionGo          = Share("B", name="Competition go flag")
 
 # ============================================================================
 # TASK INSTANTIATION
@@ -207,6 +212,7 @@ imuTask = task_imu(
 
 # Create an Observer instance
 observerTask = task_observer(
+    observerGoFlag,
     wheelDistLeft,
     wheelDistRight,
     motorVoltageLeft,
@@ -235,9 +241,27 @@ userTask = task_user(
     #Shares for State Estimation
     imuHeadingRate, motorVoltageLeft, motorVoltageRight, wheelDistLeft, 
     wheelDistRight, imuHeading, motorOmegaLeft, motorOmegaRight,
+    observerGoFlag,
     observerCenterDistance, observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
-    observerDistanceLeft, observerDistanceRight
+    observerDistanceLeft, observerDistanceRight,
+    competitionGo
     )
+
+competitionTask = task_competition(
+    competitionGo,
+    lineFollowGo,
+    lineFollowSetPoint,
+    lineFound,
+    lineFollowKff,
+    observerGoFlag,
+    reflectanceMode,
+    observerCenterDistance,
+    observerHeading,
+    leftMotorGo,
+    leftMotorSetPoint,
+    rightMotorGo,
+    rightMotorSetPoint
+)
 
 
 
@@ -249,26 +273,30 @@ userTask = task_user(
 # Priority: 2 (highest) for left motor, 1 for right motor, 0 (lowest) for user interface
 # Period: 20 ms (50 Hz) for motor tasks, 0 ms (run as available) for user task
 task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
-                      priority=5, period=20, profile=True))
+                      priority=20, period=20, profile=True))
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
-                      priority=5, period=20, profile=True))
+                      priority=21, period=20, profile=True))
 task_list.append(Task(userTask.run, name="User Int. Task",
-                      priority=1, period=0, profile=True))
+                      priority=0, period=0, profile=False))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
-                      priority=5, period=15, profile=True))
+                      priority=15, period=50, profile=True))
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
-                      priority=4, period=15, profile=True))
+                      priority=10, period=40, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=1, period=20, profile=True))
+                      priority=30, period=50, profile=True))
 task_list.append(Task(observerTask.run, name="Observer Task",
-                      priority=1, period=50, profile=True))
+                      priority=32, period=20, profile=True))
+task_list.append(Task(competitionTask.run, name="Competition Task",
+                      priority=31, period=50, profile=True))
 
-def garbage_collect():
-    while True:
-        gc.collect()
-        yield 0
+class RomiGarbage:
+    def run(self):
+        while True:
+            gc.collect()
+            yield
+rg = RomiGarbage()
 
-task_list.append(Task(garbage_collect, name="Garbage collection",
+task_list.append(Task(rg.run, name="Garbage collection",
                       priority=0, period=5000, profile=True))
 
 gc.collect()

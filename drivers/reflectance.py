@@ -1,8 +1,10 @@
-"""Reflectance sensor array driver with file-backed calibration support."""
+# Reflectance sensor array driver with file-backed calibration support.
 
 from pyb import Pin, ADC
 import json
 import utime
+from array import array
+import gc
 
 
 class Reflectance_Sensor:
@@ -36,7 +38,7 @@ class Reflectance_Sensor:
         # Load calibration from file into memory (cached for fast access)
         self._calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
-        self._samples = [[0]*self._numSensors]*self._SAMPLE_COUNT
+        # self._samples = [[0]*self._numSensors]*self._SAMPLE_COUNT
 
     def _read_raw(self) -> list[int]:
         """Read all sensors once and return raw ADC values."""
@@ -117,7 +119,7 @@ class Reflectance_Sensor:
             centroid = self._last_valid_centroid
 
         # return raw, calibrated, C, line_detected
-        return raw, calibrated, centroid
+        return raw, calibrated, centroid, line_detected
 
     def get_centroid(self):
         return self.get_values()[2]
@@ -145,13 +147,17 @@ class Reflectance_Sensor:
         # After calibration completes, the in-memory cache is updated.
         
         calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
+        gc.collect()
 
         sample_count = self._SAMPLE_COUNT
-        self._samples = [[0]*self._numSensors] * sample_count
+        avg_reading = array('i', self._read_raw())
 
         for i in range(sample_count):
-            readings = self._read_raw()
-            self._samples.append(readings)  # collect one sample set
+            new_read = self._read_raw()
+
+            for j in range(self._numSensors):
+                avg_reading[j] += new_read[j]
+                avg_reading[j] = avg_reading[j] // 2
 
             # Calculate the ticks in ms before continuing to sample
             deadline_ms = utime.ticks_add(utime.ticks_ms(), self._SAMPLE_PERIOD_MS)
@@ -160,9 +166,8 @@ class Reflectance_Sensor:
                 yield i
 
         for i in range(self._numSensors):
-            avg = sum(sample[i] for sample in self._samples) / sample_count
-            calibration[i][mode] = avg
-            print(f'  {i}: {avg}')
+            calibration[i][mode] = avg_reading[i]
+            print(f'  {i}: {avg_reading[i]}')
 
         with open(self._CALIBRATION_FILE, "w") as f:
             json.dump(calibration, f)

@@ -96,8 +96,10 @@ class task_reflectance:
                     self._state = S0_IDLE
 
                 # If running, get latest centroid and put into share
-                centroid = self._sensor.get_centroid()
+                # centroid = self._sensor.get_centroid()
+                _raw, _calibrated, centroid, line_found = self._sensor.get_values()
                 self._lineCentroid.put(centroid)
+                self._lineFound.put(line_found)
 
                 # Log centroid vs time without blocking if queues fill up
                 if (not self._centroidValues.full()) and (not self._centroidTimeValues.full()):

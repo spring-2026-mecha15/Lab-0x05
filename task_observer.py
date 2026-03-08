@@ -1,25 +1,32 @@
+from micropython import const
 from task_share import Share
 from ulab import numpy as np
 
 from constants import A_D, B_D, C_D, D_D
 
+S0_IDLE = const(0)
+S1_RUN  = const(1)
+
 class task_observer:
     def __init__(
             self,
-            distLeft:      Share,
-            distRight:     Share,
-            voltageLeft:    Share,
-            voltageRight:   Share,
-            heading:       Share,
-            headingRate:   Share,
-            observerCenterDistance: Share,
-            observerHeading: Share,
-            observerHeadingRate: Share,
-            observerOmegaLeft: Share,
-            observerOmegaRight: Share,
-            observerDistanceLeft: Share,
-            observerDistanceRight: Share
+            goFlag:                 Share,
+            distLeft:                Share,
+            distRight:               Share,
+            voltageLeft:             Share,
+            voltageRight:            Share,
+            heading:                 Share,
+            headingRate:             Share,
+            observerCenterDistance:  Share,
+            observerHeading:         Share,
+            observerHeadingRate:     Share,
+            observerOmegaLeft:       Share,
+            observerOmegaRight:      Share,
+            observerDistanceLeft:    Share,
+            observerDistanceRight:   Share
         ):
+
+        self._goFlag = goFlag
 
         self.s_L = distLeft
         self.s_R = distRight
@@ -47,25 +54,25 @@ class task_observer:
         self.y_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
         self.u_aug = np.array([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]])
 
+        self._state = S0_IDLE
+
     def update(self, u_L, u_R, s_L, s_R, psi, psi_dot):
         
-        """
-        Updates the state estimate using the latest motor commands and sensor readings.
-        Must be called at exactly Ts = 0.02s (50 Hz).
+        # Updates the state estimate using the latest motor commands and sensor readings.
+        # Must be called at exactly Ts = 0.02s (50 Hz).
         
-        State Estimation Parameters:
-        -----------
-        u_L     : float : Commanded left motor voltage (Volts) 
-        u_R     : float : Commanded right motor voltage (Volts)
-        s_L     : float : Measured left wheel distance from encoders (mm)
-        s_R     : float : Measured right wheel distance from encoders (mm)
-        psi     : float : Measured heading/yaw from BNO055 IMU (radians)
-        psi_dot : float : Measured yaw rate from BNO055 IMU (radians/sec)
+        # State Estimation Parameters:
+        # -----------
+        # u_L     : float : Commanded left motor voltage (Volts) 
+        # u_R     : float : Commanded right motor voltage (Volts)
+        # s_L     : float : Measured left wheel distance from encoders (mm)
+        # s_R     : float : Measured right wheel distance from encoders (mm)
+        # psi     : float : Measured heading/yaw from BNO055 IMU (radians)
+        # psi_dot : float : Measured yaw rate from BNO055 IMU (radians/sec)
         
-        Returns:
-        --------
-        x_hat   : ulab.numpy.ndarray : The new 4x1 state estimate vector
-        """
+        # Returns:
+        # --------
+        # x_hat   : ulab.numpy.ndarray : The new 4x1 state estimate vector
 
         self.u_aug[0][0] = u_L
         self.u_aug[1][0] = u_R
@@ -81,20 +88,33 @@ class task_observer:
     
     def run(self):
         while True:
-            self.update(
-                self.u_L.get(),
-                self.u_R.get(),
-                self.s_L.get(),
-                self.s_R.get(),
-                self.psi.get(),
-                self.psi_dot.get(),
-            )
-            # Publish observer states as scalar shares.
-            self._observerCenterDistance.put(float(self.x_hat[0][0]))
-            self._observerDistanceLeft.put(float(self.y_hat[0][0]))
-            self._observerDistanceRight.put(float(self.y_hat[1][0]))
-            self._observerHeading.put(float(self.y_hat[2][0]))
-            self._observerHeadingRate.put(float(self.y_hat[3][0]))
-            self._observerOmegaLeft.put(float(self.x_hat[2][0]))
-            self._observerOmegaRight.put(float(self.x_hat[3][0]))
+            if self._state == S0_IDLE:
+                if self._goFlag.get(S0_IDLE):
+                    self._state = S1_RUN
+
+            elif self._state == S1_RUN:
+                if not self._goFlag.get(S0_IDLE):
+                    self._state = S0_IDLE
+
+
+                else:
+                    self.update(
+                        self.u_L.get(),
+                        self.u_R.get(),
+                        self.s_L.get(),
+                        self.s_R.get(),
+                        self.psi.get(),
+                        self.psi_dot.get(),
+                    )
+                    # Publish observer states as scalar shares.
+                    self._observerCenterDistance.put(float(self.x_hat[0][0]))
+                    self._observerDistanceLeft.put(float(self.y_hat[0][0]))
+                    self._observerDistanceRight.put(float(self.y_hat[1][0]))
+                    self._observerHeading.put(float(self.y_hat[2][0]))
+                    self._observerHeadingRate.put(float(self.y_hat[3][0]))
+                    self._observerOmegaLeft.put(float(self.x_hat[2][0]))
+                    self._observerOmegaRight.put(float(self.x_hat[3][0]))
+
+                    if self.x_hat[0][0] >= 1375:
+                        self._goFlag.put(0)
             yield 0

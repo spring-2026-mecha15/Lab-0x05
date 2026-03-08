@@ -124,6 +124,8 @@ class task_line_follow:
                 if not self._goFlag.get():
                     self._state = 0
                 else:
+                    # Continue to update nominal velocity
+                    self._nominalSetPoint = self._setPoint.get()
                     # Run line follower PI control
                     # input will be read from the centroid share
                     # output will be sent to `plant_cb`

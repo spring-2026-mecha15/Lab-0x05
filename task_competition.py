@@ -1,5 +1,6 @@
 from micropython import const
 from task_share import Share
+from time import ticks_ms, ticks_diff
 
 S0 = const(0)     # Idle task. Wait for go command
 S1 = const(1)     # Run from point 0-1 (line follow with diverge)
@@ -8,30 +9,118 @@ S3 = const(3)     # Run from point 2-3 (line follow with intermittent line)
 S4 = const(4)     # Run from point 3-4 (line follow on "square wave")
 S5 = const(5)     # Run from point 4-5 (parking garage)
 
+ACCELERATION = 350  # Acceleration in mm/s^2
+
+LEG_1_DIST = 1375
+LEG_1_ACCEL_DIST = 500
+LEG_1_DECEL_DIST = 1100
+LEG_1_START_VEL = 50
+LEG_1_MAX_VEL = 500
+LEG_1_END_VEL = 100
+
+LEG_2_KFF = 0.6 # Feed forward gain for 200mm radius during leg 2
+
 class task_competition:
-    def __init__(self, goFlag: Share):
+    def __init__(self,
+            competitionGo:           Share,
+            lineFollowGo:            Share,
+            lineFollowSetPoint:      Share,
+            lineFound:               Share,
+            lineFollowKff:           Share,
+            observerGoFlag:          Share,
+            reflectanceMode:         Share,
+            observerCenterDistance:  Share,
+            observerHeading:         Share,
+            leftMotorGo:             Share,
+            leftMotorSetPoint:       Share,
+            rightMotorGo:            Share,
+            rightMotorSetPoint:      Share
+        ):
         
-        self._goFlag = goFlag
+        self._goFlag = competitionGo
+        self._lineFollowGo = lineFollowGo
+        self._lineFollowSetPoint = lineFollowSetPoint
+        self._lineFound = lineFound
+        self._lineFollowKff = lineFollowKff
+        self._observerGoFlag = observerGoFlag
+        self._reflectanceMode = reflectanceMode
+        self._observerCenterDistance = observerCenterDistance
+        self._observerHeading = observerHeading
+        self._leftMotorGo = leftMotorGo
+        self._leftMotorSetPoint = leftMotorSetPoint
+        self._rightMotorGo = rightMotorGo
+        self._rightMotorSetPoint = rightMotorSetPoint
 
         self._state = S0
+
+        self._centerStartDist = 0
+        self._startMs = ticks_ms()
+        self._timer_ms = ticks_ms()
+
+        self._velocity = 0
 
     def run(self):
         while True:
             if self._state == S0:
                 if self._goFlag.get():
+                    # Set initial configuration
+                    self._timer_ms = ticks_ms()
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._reflectanceMode.put(3)
+                    self._velocity = LEG_1_START_VEL
+                    self._lineFollowSetPoint.put(self._velocity)
+                    # self._lineFollowSetPoint.put(25)
+                    self._leftMotorSetPoint.put(LEG_1_START_VEL)
+                    self._rightMotorSetPoint.put(LEG_1_START_VEL)
+                    self._observerGoFlag.put(1)
+                    self._leftMotorGo.put(1)
+                    self._rightMotorGo.put(1)
+                    self._lineFollowGo.put(1)
+                    self._lineFollowKff.put(0)
+
                     self._state = S1
 
             elif self._state == S1:
-                pass
+                if not self._goFlag.get():
+                    self._state = S0
+
+                dt = ticks_diff(ticks_ms(), self._timer_ms) / 1000
+                self._timer_ms = ticks_ms()
+
+                # Accel
+                if self._observerCenterDistance.get() < LEG_1_ACCEL_DIST:
+                    if self._velocity < LEG_1_MAX_VEL:
+                        dv = ACCELERATION * dt
+                        self._velocity += dv
+
+                # Decel
+                elif self._observerCenterDistance.get() >= LEG_1_DECEL_DIST:
+                    dv = -1 * ACCELERATION * dt
+                    if self._velocity > LEG_1_END_VEL:
+                        self._velocity += dv
+
+                self._lineFollowSetPoint.put(self._velocity)
+
+                segment_distance = self._observerCenterDistance.get()
+                if (segment_distance) >= LEG_1_DIST:
+                    self._lineFollowSetPoint.put(LEG_1_END_VEL)
+                    self._centerStartDist = self._observerCenterDistance.get() # NOTE: this isn't working. I don't know why...
+                    self._lineFollowKff.put(0.7)
+                    self._state = S2
 
             elif self._state == S2:
-                pass
+                if not self._lineFound.get():
+                    self._state = S3
 
             elif self._state == S3:
-                pass
+                # if (self._observerCenterDistance.get() - self._centerStartDist) >= 125:
+                #     self._state = S4
+                self._goFlag.put(0)
+                self._state = 0
 
             elif self._state == S4:
-                pass
+                self._goFlag.put(0) # Ack that competition is done
+                self._state = S0
 
             elif self._state == S5:
                 pass

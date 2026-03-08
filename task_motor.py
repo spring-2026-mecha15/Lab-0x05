@@ -168,9 +168,10 @@ class task_motor:
                 # print(f"Running motor loop, cycle {self._dataValues.num_in()}")
 
                 # Check if we need to exit motor control
-                if not(self._goFlag.get()):
+                if not self._goFlag.get():
                     self._state = S1_WAIT
                     self._mot.disable()
+                    self._enc.zero()
 
                 self._controller.set_point = self._setpoint.get()
                 

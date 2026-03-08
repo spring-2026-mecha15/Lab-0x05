@@ -95,13 +95,15 @@ class task_user:
         imuHeading,            # type: Share
         motorOmegaLeft,        # type: Share
         motorOmegaRight,       # type: Share
+        observerGoFlag,        # type: Share
         observerCenterDistance,# type: Share
         observerHeading,       # type: Share
         observerHeadingRate,   # type: Share
         observerOmegaLeft,     # type: Share
         observerOmegaRight,    # type: Share
         observerDistanceLeft,  # type: Share
-        observerDistanceRight  # type: Share
+        observerDistanceRight, # type: Share
+        competitionGoFlag,     # type: Share 
     ):
 
         # State machine
@@ -153,6 +155,7 @@ class task_user:
         self._imuHeading = imuHeading
         self._motorOmegaLeft = motorOmegaLeft
         self._motorOmegaRight = motorOmegaRight
+        self._observerGoFlag = observerGoFlag
         self._observerCenterDistance = observerCenterDistance
         self._observerHeading = observerHeading
         self._observerHeadingRate = observerHeadingRate
@@ -160,6 +163,8 @@ class task_user:
         self._observerOmegaRight = observerOmegaRight
         self._observerDistanceLeft = observerDistanceLeft
         self._observerDistanceRight = observerDistanceRight
+
+        self._competitionGoFlag = competitionGoFlag
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -797,107 +802,66 @@ class task_user:
             elif self._state == S10_STATE_ESTIMATION:
                 self._ser.write("State Estimation Test\r\n")
 
-                # Set sensor array into RUN mode
-                self._leftMotorSetPoint.put(50)
-                self._rightMotorSetPoint.put(50)
-                self._reflectanceMode.put(3)
-                self._leftMotorGo.put(1)
-                self._rightMotorGo.put(1)
-                yield # Let sensor array pick up the change
+                # # Set sensor array into RUN mode
+                # # self._leftMotorSetPoint.put(100)
+                # # self._rightMotorSetPoint.put(100)
+                # self._reflectanceMode.put(3)
+                # self._leftMotorGo.put(1)
+                # self._rightMotorGo.put(1)
+                # self._observerGoFlag.put(1)
+                # yield # Let sensor array pick up the change
 
-                # # Enable line following controller
+                # # # Enable line following controller
+                # self._lineFollowSetPoint.put(100)
                 # self._lineFollowGo.put(1)
-                self._lineFollowGo.put(0)
-                # Run IMU continuously while in this mode
-                self._imuMode.put(0xFF)
+                # # self._lineFollowGo.put(0)
+                # # Run IMU continuously while in this mode
+                # self._imuMode.put(0xFF)
+
+                self._competitionGoFlag.put(1)
+                # self._imuMode.put(0xFF)
 
                 self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
 
-                # Wait for newline or carriage return, non-blocking (yielding)
-                self._ser.write(f"{CSV_BEGIN}\r\n")
-                self._ser.write(
-                    "Time (ms),"
-                    "centerDistance_sensor (mm),"
-                    "centerDistance_observer (mm),"
-                    "distL_sensor (mm),"
-                    "distL_observer (mm),"
-                    "distR_sensor (mm),"
-                    "distR_observer (mm),"
-                    "heading_sensor,"
-                    "heading_observer,"
-                    "headingRate_sensor,"
-                    "headingRate_observer,"
-                    "omegaL_sensor (rad/s),"
-                    "omegaL_observer (rad/s),"
-                    "omegaR_sensor (rad/s),"
-                    "omegaR_observer (rad/s),"
-                    "centerDistance_error (mm),"
-                    "distL_error (mm),"
-                    "distR_error (mm),"
-                    "heading_error,"
-                    "headingRate_error,"
-                    "omegaL_error (rad/s),"
-                    "omegaR_error (rad/s)\r\n"
-                )
+                # # Wait for newline or carriage return, non-blocking (yielding)
+                # self._ser.write(f"{CSV_BEGIN}\r\n")
+                # self._ser.write(
+                #     "Time (ms),"
+                #     "centerDistance_sensor (mm),"
+                #     "centerDistance_observer (mm),"
+                #     "distL_sensor (mm),"
+                #     "distL_observer (mm),"
+                #     "distR_sensor (mm),"
+                #     "distR_observer (mm),"
+                #     "heading_sensor,"
+                #     "heading_observer,"
+                #     "headingRate_sensor,"
+                #     "headingRate_observer,"
+                #     "omegaL_sensor (rad/s),"
+                #     "omegaL_observer (rad/s),"
+                #     "omegaR_sensor (rad/s),"
+                #     "omegaR_observer (rad/s),"
+                #     "centerDistance_error (mm),"
+                #     "distL_error (mm),"
+                #     "distR_error (mm),"
+                #     "heading_error,"
+                #     "headingRate_error,"
+                #     "omegaL_error (rad/s),"
+                #     "omegaR_error (rad/s)\r\n"
+                # )
 
                 stream_decimation = 1
                 sample_idx = 0
                 start_time = ticks_us()
 
                 while True:
-                    if (sample_idx % stream_decimation) == 0:
-                        t_ms = int(ticks_diff(ticks_us(), start_time) / 1000)
-                        wheelDistLeft = self._wheelDistLeft.get()
-                        wheelDistRight = self._wheelDistRight.get()
-                        observerDistanceLeft = self._observerDistanceLeft.get()
-                        observerDistanceRight = self._observerDistanceRight.get()
-                        imuHeading = self._imuHeading.get()
-                        observerHeading = self._observerHeading.get()
-                        imuHeadingRate = self._imuHeadingRate.get()
-                        observerHeadingRate = self._observerHeadingRate.get()
-                        motorOmegaLeft = self._motorOmegaLeft.get()
-                        observerOmegaLeft = self._observerOmegaLeft.get()
-                        motorOmegaRight = self._motorOmegaRight.get()
-                        observerOmegaRight = self._observerOmegaRight.get()
-                        centerDistance_sensor = 0.5 * (wheelDistLeft + wheelDistRight)
-                        centerDistance_observer = self._observerCenterDistance.get()
+                    # Check if observer has traveled X distance, then stop motors
+                    # if not self._observerGoFlag.get():
+                    if not self._competitionGoFlag.get():
+                        break
 
-                        # Error calculations (sensor - observer)
-                        centerDistance_error = centerDistance_sensor - centerDistance_observer
-                        distL_error = wheelDistLeft - observerDistanceLeft
-                        distR_error = wheelDistRight - observerDistanceRight
-                        heading_error = imuHeading - observerHeading
-                        headingRate_error = imuHeadingRate - observerHeadingRate
-                        omegaL_error = motorOmegaLeft - observerOmegaLeft
-                        omegaR_error = motorOmegaRight - observerOmegaRight
-                        
-                        line = (
-                            "{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}\r\n".format(
-                                t_ms,
-                                centerDistance_sensor,
-                                centerDistance_observer,
-                                wheelDistLeft,
-                                observerDistanceLeft,
-                                wheelDistRight,
-                                observerDistanceRight,
-                                imuHeading,
-                                observerHeading,
-                                imuHeadingRate,
-                                observerHeadingRate,
-                                motorOmegaLeft,
-                                observerOmegaLeft,
-                                motorOmegaRight,
-                                observerOmegaRight,
-                                centerDistance_error,
-                                distL_error,
-                                distR_error,
-                                heading_error,
-                                headingRate_error,
-                                omegaL_error,
-                                omegaR_error,
-                            )
-                        )
-                    # if (sample_idx % stream_decimation) == 0:
+                    if (sample_idx % stream_decimation) == 0:
+                        self._ser.write(f"c: {self._observerCenterDistance.get()}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
                     #     t_ms = int(ticks_diff(ticks_us(), start_time) / 1000)
                     #     wheelDistLeft = self._wheelDistLeft.get()
                     #     wheelDistRight = self._wheelDistRight.get()
@@ -924,35 +888,46 @@ class task_user:
                     #     omegaR_error = motorOmegaRight - observerOmegaRight
                         
                     #     line = (
-                    #         "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\r\n".format(
+                    #         "{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}\r\n".format(
                     #             t_ms,
-                    #             centerDistance_sensor, centerDistance_observer,
-                    #             wheelDistLeft, observerDistanceLeft,
-                    #             wheelDistRight, observerDistanceRight,
-                    #             imuHeading, observerHeading,
-                    #             imuHeadingRate, observerHeadingRate,
-                    #             motorOmegaLeft, observerOmegaLeft,
-                    #             motorOmegaRight, observerOmegaRight,
-                    #             centerDistance_error, distL_error, distR_error,
-                    #             heading_error, headingRate_error, omegaL_error, omegaR_error,
+                    #             centerDistance_sensor,
+                    #             centerDistance_observer,
+                    #             wheelDistLeft,
+                    #             observerDistanceLeft,
+                    #             wheelDistRight,
+                    #             observerDistanceRight,
+                    #             imuHeading,
+                    #             observerHeading,
+                    #             imuHeadingRate,
+                    #             observerHeadingRate,
+                    #             motorOmegaLeft,
+                    #             observerOmegaLeft,
+                    #             motorOmegaRight,
+                    #             observerOmegaRight,
+                    #             centerDistance_error,
+                    #             distL_error,
+                    #             distR_error,
+                    #             heading_error,
+                    #             headingRate_error,
+                    #             omegaL_error,
+                    #             omegaR_error,
                     #         )
                     #     )
-                        self._ser.write(line)
-                        # """
-                        # error_line = (
-                        #     "t_ms={}, centerDistance_error={}, distL_error={}, distR_error={}, "
-                        #     "heading_error={}, headingRate_error={}, omegaL_error={}, omegaR_error={}\r\n".format(
-                        #         t_ms,
-                        #         centerDistance_error,
-                        #         distL_error,
-                        #         distR_error,
-                        #         heading_error,
-                        #         headingRate_error,
-                        #         omegaL_error,
-                        #         omegaR_error,
-                        #     )
-                        # ))
-                        # self._ser.write(error_line)"""
+                    #     self._ser.write(line)
+                    #     # error_line = (
+                    #     #     "t_ms={}, centerDistance_error={}, distL_error={}, distR_error={}, "
+                    #     #     "heading_error={}, headingRate_error={}, omegaL_error={}, omegaR_error={}\r\n".format(
+                    #     #         t_ms,
+                    #     #         centerDistance_error,
+                    #     #         distL_error,
+                    #     #         distR_error,
+                    #     #         heading_error,
+                    #     #         headingRate_error,
+                    #     #         omegaL_error,
+                    #     #         omegaR_error,
+                    #     #     )
+                    #     # ))
+                    #     # self._ser.write(error_line)
                     sample_idx += 1
 
                     if self._ser.any():
@@ -967,6 +942,7 @@ class task_user:
                 # Stop line-following mode and related tasks before returning.
                 self._ser.write(f"{CSV_END}\r\n")
 
+                self._competitionGoFlag.put(0)
                 self._lineFollowGo.put(0)
                 self._reflectanceMode.put(0)
                 self._imuMode.put(0)
