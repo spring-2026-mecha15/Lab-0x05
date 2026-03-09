@@ -114,7 +114,4 @@ class task_observer:
                     self._observerHeadingRate.put(float(self.y_hat[3][0]))
                     self._observerOmegaLeft.put(float(self.x_hat[2][0]))
                     self._observerOmegaRight.put(float(self.x_hat[3][0]))
-
-                    if self.x_hat[0][0] >= 1375:
-                        self._goFlag.put(0)
             yield 0

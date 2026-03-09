@@ -655,12 +655,12 @@ class task_user:
                 sample_idx = 0
                 while True:
                     # Decimate queued samples; stream only every Nth row to reduce CSV volume.
-                    """if self._centroidTimeValues.any() and self._centroidValues.any():
-                        t_ms = self._centroidTimeValues.get()
-                        centroid = self._centroidValues.get()
-                        if (sample_idx % stream_decimation) == 0:
-                            self._ser.write(f"{t_ms},{centroid}\r\n")
-                        sample_idx += 1"""
+                    # """if self._centroidTimeValues.any() and self._centroidValues.any():
+                    #     t_ms = self._centroidTimeValues.get()
+                    #     centroid = self._centroidValues.get()
+                    #     if (sample_idx % stream_decimation) == 0:
+                    #         self._ser.write(f"{t_ms},{centroid}\r\n")
+                    #     sample_idx += 1"""
 
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
