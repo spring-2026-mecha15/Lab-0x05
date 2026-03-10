@@ -27,6 +27,7 @@ from drivers.motor import Motor
 from drivers.encoder import Encoder
 from drivers.reflectance import Reflectance_Sensor
 from drivers.imu import BNO055
+from drivers.ultrasonic import UltrasonicSensor
 gc.collect()
 print(f"Mem free: {gc.mem_free()}")
 
@@ -48,6 +49,7 @@ gc.collect()
 from task_observer import task_observer
 gc.collect()
 from task_competition import task_competition
+from task_ultrasonic import task_ultrasonic
 gc.collect()
 print(f"Mem free: {gc.mem_free()}")
 
@@ -87,6 +89,8 @@ reflectanceSensor = Reflectance_Sensor([
     ])
 
 imuSensor = BNO055(I2C(1, baudrate=100000))
+
+ultrasonicSensor = UltrasonicSensor(PIN_TRIG, PIN_ECHO)
 
 
 
@@ -167,6 +171,8 @@ observerDistanceRight  = Share("f", name="Observer Right Wheel Distance [mm]")
 
 competitionGo          = Share("B", name="Competition go flag")
 
+ultrasonicDistance     = Share("f", name="Ultrasonic Sensor")
+
 # ============================================================================
 # TASK INSTANTIATION
 # ============================================================================
@@ -244,7 +250,8 @@ userTask = task_user(
     observerGoFlag,
     observerCenterDistance, observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
     observerDistanceLeft, observerDistanceRight,
-    competitionGo
+    competitionGo,
+    ultrasonicDistance
     )
 
 competitionTask = task_competition(
@@ -263,6 +270,11 @@ competitionTask = task_competition(
     rightMotorSetPoint
 )
 
+ultrasonicTask = task_ultrasonic(
+    ultrasonicSensor,
+    ultrasonicDistance
+)
+
 
 
 # ============================================================================
@@ -277,16 +289,18 @@ task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=1, period=40, profile=True))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
                       priority=2, period=50, profile=True))
-task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
+task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
                       priority=3, period=20, profile=True))
-task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
+task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
                       priority=4, period=20, profile=True))
+task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
+                      priority=5, period=20, profile=True))
 task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=5, period=50, profile=True))
+                      priority=6, period=50, profile=True))
 task_list.append(Task(observerTask.run, name="Observer Task", # MUST have 20ms period
-                      priority=6, period=20, profile=True))
+                      priority=7, period=20, profile=True))
 task_list.append(Task(competitionTask.run, name="Competition Task",
-                      priority=7, period=50, profile=True))
+                      priority=8, period=50, profile=True))
 
 class RomiGarbage:
     def run(self):

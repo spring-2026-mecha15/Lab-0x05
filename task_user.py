@@ -104,6 +104,7 @@ class task_user:
         observerDistanceLeft,  # type: Share
         observerDistanceRight, # type: Share
         competitionGoFlag,     # type: Share 
+        ultrasonicDistance,    # type: Share
     ):
 
         # State machine
@@ -165,6 +166,8 @@ class task_user:
         self._observerDistanceRight = observerDistanceRight
 
         self._competitionGoFlag = competitionGoFlag
+
+        self._ultrasonicDistance = ultrasonicDistance
 
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
@@ -528,8 +531,15 @@ class task_user:
                 # (Slightly tweaked to account for actual VDD)
                 battVoltage = adcVoltage / 0.305
 
-                self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n")
+                self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n\n")
 
+
+                ############################################
+                # BATTERY LEVEL
+                ############################################
+                distance = self._ultrasonicDistance.get()
+                self._ser.write(f"Ultrasonic distance: {distance:.2f}cm\r\n")
+                ############################################
 
                 ############################################
                 # IMU
