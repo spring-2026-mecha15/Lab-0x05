@@ -285,6 +285,15 @@
 
 
 
+<span class="c1">## Clear the global registry of shares and queues so objects from a previous</span>
+<span class="c1">#  REPL run don&#39;t stay referenced after KeyboardInterrupt.</span>
+<div class="viewcode-block" id="clear_all">
+<a class="viewcode-back" href="../api.html#task_share.clear_all">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clear_all</span> <span class="p">():</span>
+    <span class="n">share_list</span><span class="o">.</span><span class="n">clear</span> <span class="p">()</span></div>
+
+
+
 <span class="c1">## Base class for queues and shares which exchange data between tasks.</span>
 <span class="c1"># </span>
 <span class="c1">#  One should never create an object from this class; it doesn&#39;t do anything</span>

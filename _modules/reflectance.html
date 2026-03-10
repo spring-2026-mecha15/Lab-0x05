@@ -271,6 +271,10 @@
         <span class="c1"># Track last valid centroid for line loss recovery</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_centroid</span> <span class="o">=</span> <span class="mf">0.0</span>
 
+        <span class="c1"># Precompute symmetric weights once to avoid rebuilding them every read.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">range</span><span class="p">((</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
         <span class="c1"># Load calibration from file into memory (cached for fast access)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_calibration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_calibration_dicts</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_CALIBRATION_FILE</span><span class="p">)</span>
 
@@ -315,17 +319,21 @@
         <span class="c1"># Use cached calibration from memory (loaded during __init__)</span>
         <span class="n">calibration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calibration</span>
 
-        <span class="c1"># Average multiple raw reads to reduce noise</span>
-        <span class="n">raw_samples</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_raw</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_READ_SAMPLES</span><span class="p">)]</span>
-        <span class="n">raw</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="nb">sum</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">raw_samples</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">_READ_SAMPLES</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span><span class="p">)</span>
-        <span class="p">]</span>
+        <span class="c1"># Average multiple raw reads to reduce noise without building nested</span>
+        <span class="c1"># sample lists on every cycle.</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_READ_SAMPLES</span><span class="p">):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_raw</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span><span class="p">):</span>
+                <span class="n">raw</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">sample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span><span class="p">):</span>
+            <span class="n">raw</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">//=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_READ_SAMPLES</span>
 
         <span class="c1"># List to store sensor readings with calibration applied</span>
-        <span class="n">calibrated</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">calibrated</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">cal</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">calibration</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">cal</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">calibration</span><span class="p">)):</span>
             <span class="n">dark</span> <span class="o">=</span> <span class="n">cal</span><span class="p">[</span><span class="s2">&quot;dark&quot;</span><span class="p">]</span>
             <span class="n">light</span> <span class="o">=</span> <span class="n">cal</span><span class="p">[</span><span class="s2">&quot;light&quot;</span><span class="p">]</span>
 
@@ -336,11 +344,10 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
 
-            <span class="n">calibrated</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">calibrated</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
         <span class="c1"># Weighted line position</span>
         <span class="c1"># This weighting assumes a symmetric, odd-count sensor array.</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">((</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_numSensors</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
         <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">calibrated</span><span class="p">)</span>
 
         <span class="c1"># Threshold-based line loss detection</span>
@@ -350,7 +357,7 @@
 
         <span class="c1"># Compute weighted sensor values</span>
         <span class="k">if</span> <span class="n">total</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">line_detected</span><span class="p">:</span>
-            <span class="n">centroid</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">v</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">calibrated</span><span class="p">))</span> <span class="o">/</span> <span class="n">total</span>
+            <span class="n">centroid</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">v</span> <span class="k">for</span> <span class="n">w</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">,</span> <span class="n">calibrated</span><span class="p">))</span> <span class="o">/</span> <span class="n">total</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_centroid</span> <span class="o">=</span> <span class="n">centroid</span>  <span class="c1"># Store for line loss recovery</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Line lost: return last valid centroid</span>

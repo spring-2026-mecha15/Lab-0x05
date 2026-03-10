@@ -234,12 +234,13 @@
           <h1>Source code for task_observer</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">micropython</span><span class="w"> </span><span class="kn">import</span> <span class="n">const</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">task_share</span><span class="w"> </span><span class="kn">import</span> <span class="n">Share</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ulab</span><span class="w"> </span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">array</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">A_D</span><span class="p">,</span> <span class="n">B_D</span><span class="p">,</span> <span class="n">C_D</span><span class="p">,</span> <span class="n">D_D</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">A_D</span><span class="p">,</span> <span class="n">B_D</span><span class="p">,</span> <span class="n">C_D</span>
 
 <span class="n">S0_IDLE</span> <span class="o">=</span> <span class="n">const</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">S1_RUN</span>  <span class="o">=</span> <span class="n">const</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="task_observer">
 <a class="viewcode-back" href="../api.html#task_observer.task_observer">[docs]</a>
@@ -247,114 +248,123 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">goFlag</span><span class="p">:</span>                 <span class="n">Share</span><span class="p">,</span>
-            <span class="n">distLeft</span><span class="p">:</span>                <span class="n">Share</span><span class="p">,</span>
-            <span class="n">distRight</span><span class="p">:</span>               <span class="n">Share</span><span class="p">,</span>
-            <span class="n">voltageLeft</span><span class="p">:</span>             <span class="n">Share</span><span class="p">,</span>
-            <span class="n">voltageRight</span><span class="p">:</span>            <span class="n">Share</span><span class="p">,</span>
-            <span class="n">heading</span><span class="p">:</span>                 <span class="n">Share</span><span class="p">,</span>
-            <span class="n">headingRate</span><span class="p">:</span>             <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerCenterDistance</span><span class="p">:</span>  <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerHeading</span><span class="p">:</span>         <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerHeadingRate</span><span class="p">:</span>     <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerOmegaLeft</span><span class="p">:</span>       <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerOmegaRight</span><span class="p">:</span>      <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerDistanceLeft</span><span class="p">:</span>    <span class="n">Share</span><span class="p">,</span>
-            <span class="n">observerDistanceRight</span><span class="p">:</span>   <span class="n">Share</span>
+            <span class="n">distLeft</span><span class="p">:</span>               <span class="n">Share</span><span class="p">,</span>
+            <span class="n">distRight</span><span class="p">:</span>              <span class="n">Share</span><span class="p">,</span>
+            <span class="n">voltageLeft</span><span class="p">:</span>            <span class="n">Share</span><span class="p">,</span>
+            <span class="n">voltageRight</span><span class="p">:</span>           <span class="n">Share</span><span class="p">,</span>
+            <span class="n">heading</span><span class="p">:</span>                <span class="n">Share</span><span class="p">,</span>
+            <span class="n">headingRate</span><span class="p">:</span>            <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerCenterDistance</span><span class="p">:</span> <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerHeading</span><span class="p">:</span>        <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerHeadingRate</span><span class="p">:</span>    <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerOmegaLeft</span><span class="p">:</span>      <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerOmegaRight</span><span class="p">:</span>     <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerDistanceLeft</span><span class="p">:</span>   <span class="n">Share</span><span class="p">,</span>
+            <span class="n">observerDistanceRight</span><span class="p">:</span>  <span class="n">Share</span>
         <span class="p">):</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span> <span class="o">=</span> <span class="n">goFlag</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">s_L</span> <span class="o">=</span> <span class="n">distLeft</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">s_R</span> <span class="o">=</span> <span class="n">distRight</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">u_L</span> <span class="o">=</span> <span class="n">voltageLeft</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">u_R</span> <span class="o">=</span> <span class="n">voltageRight</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">psi</span> <span class="o">=</span> <span class="n">heading</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">psi_dot</span> <span class="o">=</span> <span class="n">headingRate</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">A_D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">A_D</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">B_D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">B_D</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">C_D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">C_D</span><span class="p">)</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span> <span class="o">=</span> <span class="n">observerCenterDistance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeading</span> <span class="o">=</span> <span class="n">observerHeading</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeadingRate</span> <span class="o">=</span> <span class="n">observerHeadingRate</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaLeft</span> <span class="o">=</span> <span class="n">observerOmegaLeft</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaRight</span> <span class="o">=</span> <span class="n">observerOmegaRight</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceLeft</span> <span class="o">=</span> <span class="n">observerDistanceLeft</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceRight</span> <span class="o">=</span> <span class="n">observerDistanceRight</span>
+        <span class="c1"># Flatten constant matrices into tuples for zero-allocation row access.</span>
+        <span class="c1"># A_D is 4x4, B_D is 4x6, C_D is 4x4.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_A</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">A_D</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span>  <span class="c1"># length 16</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_B</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">B_D</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span>  <span class="c1"># length 24</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_C</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">C_D</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span>  <span class="c1"># length 16</span>
 
+        <span class="c1"># State vectors as mutable float arrays — reused in place every cycle,</span>
+        <span class="c1"># so no heap allocation occurs in the 50 Hz hot path.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span>  <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>  <span class="c1"># 4-element state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span>  <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>  <span class="c1"># 4-element output</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_x_new</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>  <span class="c1"># workspace for A@x+B@u</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span>  <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>  <span class="c1"># 6-element input</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span>  <span class="o">=</span> <span class="n">observerCenterDistance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeading</span>         <span class="o">=</span> <span class="n">observerHeading</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeadingRate</span>     <span class="o">=</span> <span class="n">observerHeadingRate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaLeft</span>       <span class="o">=</span> <span class="n">observerOmegaLeft</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaRight</span>      <span class="o">=</span> <span class="n">observerOmegaRight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceLeft</span>    <span class="o">=</span> <span class="n">observerDistanceLeft</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceRight</span>   <span class="o">=</span> <span class="n">observerDistanceRight</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S0_IDLE</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_x</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="c1"># Compute out = A(4x4)@x(4) + B(4x6)@u(6) with zero heap allocation.</span>
+        <span class="c1"># A and B are flat tuples (row-major), x/u/out are array.array(&#39;f&#39;).</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> \
+              <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> \
+              <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="n">B</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">6</span><span class="o">+</span><span class="mi">5</span><span class="p">]</span><span class="o">*</span><span class="n">u</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_y</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="c1"># Compute out = C(4x4)@x(4) with zero heap allocation.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
 
 <div class="viewcode-block" id="task_observer.update">
 <a class="viewcode-back" href="../api.html#task_observer.task_observer.update">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u_L</span><span class="p">,</span> <span class="n">u_R</span><span class="p">,</span> <span class="n">s_L</span><span class="p">,</span> <span class="n">s_R</span><span class="p">,</span> <span class="n">psi</span><span class="p">,</span> <span class="n">psi_dot</span><span class="p">):</span>
-        
-        <span class="c1"># Updates the state estimate using the latest motor commands and sensor readings.</span>
-        <span class="c1"># Must be called at exactly Ts = 0.02s (50 Hz).</span>
-        
-        <span class="c1"># State Estimation Parameters:</span>
-        <span class="c1"># -----------</span>
-        <span class="c1"># u_L     : float : Commanded left motor voltage (Volts) </span>
-        <span class="c1"># u_R     : float : Commanded right motor voltage (Volts)</span>
-        <span class="c1"># s_L     : float : Measured left wheel distance from encoders (mm)</span>
-        <span class="c1"># s_R     : float : Measured right wheel distance from encoders (mm)</span>
-        <span class="c1"># psi     : float : Measured heading/yaw from BNO055 IMU (radians)</span>
-        <span class="c1"># psi_dot : float : Measured yaw rate from BNO055 IMU (radians/sec)</span>
-        
-        <span class="c1"># Returns:</span>
-        <span class="c1"># --------</span>
-        <span class="c1"># x_hat   : ulab.numpy.ndarray : The new 4x1 state estimate vector</span>
+        <span class="c1"># Load inputs into reusable buffer.</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span>
+        <span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_L</span><span class="p">;</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_R</span><span class="p">;</span> <span class="n">u</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_L</span>
+        <span class="n">u</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_R</span><span class="p">;</span> <span class="n">u</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">psi</span><span class="p">;</span> <span class="n">u</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="n">psi_dot</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_L</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">u_R</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_L</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_R</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">psi</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">[</span><span class="mi">5</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">psi_dot</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">A_D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">B_D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">u_aug</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">C_D</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">)</span>
+        <span class="c1"># x_new = A @ x_hat + B @ u_aug  (zero allocation)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_x</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_A</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x_new</span><span class="p">)</span>
 
-        <span class="k">return</span></div>
+        <span class="c1"># Copy x_new into x_hat in place so the buffer objects never change.</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_x_new</span>
+        <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="n">x</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
 
-    
+        <span class="c1"># y_hat = C @ x_hat  (zero allocation)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_y</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_C</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="task_observer.run">
 <a class="viewcode-back" href="../api.html#task_observer.task_observer.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S0_IDLE</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">S0_IDLE</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S1_RUN</span>
+            <span class="c1"># if self._state == S0_IDLE:</span>
+            <span class="c1">#     if self._goFlag.get():</span>
+            <span class="c1">#         self._state = S1_RUN</span>
 
-            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S1_RUN</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">S0_IDLE</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S0_IDLE</span>
-
-
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">u_L</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">u_R</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">s_L</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">s_R</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">psi</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">psi_dot</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
-                    <span class="p">)</span>
-                    <span class="c1"># Publish observer states as scalar shares.</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceLeft</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerDistanceRight</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeading</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerHeadingRate</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y_hat</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaLeft</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_observerOmegaRight</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x_hat</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="c1"># elif self._state == S1_RUN:</span>
+            <span class="c1">#     if not self._goFlag.get():</span>
+            <span class="c1">#         self._state = S0_IDLE</span>
+            <span class="c1">#     else:</span>
+            <span class="c1">#         self.update(</span>
+            <span class="c1">#             self.u_L.get(),</span>
+            <span class="c1">#             self.u_R.get(),</span>
+            <span class="c1">#             self.s_L.get(),</span>
+            <span class="c1">#             self.s_R.get(),</span>
+            <span class="c1">#             self.psi.get(),</span>
+            <span class="c1">#             self.psi_dot.get(),</span>
+            <span class="c1">#         )</span>
+            <span class="c1">#         # Publish: array.array element access avoids the float()</span>
+            <span class="c1">#         # wrapper needed with ulab, keeping allocation minimal.</span>
+            <span class="c1">#         x = self.x_hat</span>
+            <span class="c1">#         y = self.y_hat</span>
+            <span class="c1">#         self._observerCenterDistance.put(x[0])</span>
+            <span class="c1">#         self._observerDistanceLeft.put(y[0])</span>
+            <span class="c1">#         self._observerDistanceRight.put(y[1])</span>
+            <span class="c1">#         self._observerHeading.put(y[2])</span>
+            <span class="c1">#         self._observerHeadingRate.put(y[3])</span>
+            <span class="c1">#         self._observerOmegaLeft.put(x[2])</span>
+            <span class="c1">#         self._observerOmegaRight.put(x[3])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+                <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">s_L</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_R</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+            <span class="p">)</span>
             <span class="k">yield</span> <span class="mi">0</span></div>
 </div>
 

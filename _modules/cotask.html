@@ -563,6 +563,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">pri_list</span> <span class="o">=</span> <span class="p">[]</span>
 
 
+    <span class="c1">## Remove all tasks from the scheduler so old task objects don&#39;t persist</span>
+    <span class="c1">#  across REPL reruns after a KeyboardInterrupt.</span>
+<div class="viewcode-block" id="TaskList.clear">
+<a class="viewcode-back" href="../api.html#cotask.TaskList.clear">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pri_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+
+
+
     <span class="c1">## Append a task to the task list. The list will be sorted by task </span>
     <span class="c1">#  priorities so that the scheduler can quickly find the highest priority</span>
     <span class="c1">#  task which is ready to run at any given time. </span>

@@ -309,6 +309,14 @@
 <a class="viewcode-back" href="../api.html#task_competition.task_competition.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_leftMotorGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_rightMotorGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_observerGoFlag</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_reflectanceMode</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="mi">0</span>
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S0</span><span class="p">:</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">get</span><span class="p">():</span>
                     <span class="c1"># Set initial configuration</span>
@@ -316,18 +324,22 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">_centerStartDist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_reflectanceMode</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_velocity</span> <span class="o">=</span> <span class="n">LEG_1_START_VEL</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_velocity</span><span class="p">)</span>
-                    <span class="c1"># self._lineFollowSetPoint.put(25)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_leftMotorSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">LEG_1_START_VEL</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_rightMotorSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">LEG_1_START_VEL</span><span class="p">)</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+                    <span class="c1"># self._leftMotorSetPoint.put(50)</span>
+                    <span class="c1"># self._rightMotorSetPoint.put(50)</span>
+                    <span class="c1"># self._lineFollowSetPoint.put(self._velocity)</span>
+                    <span class="c1"># self._leftMotorSetPoint.put(LEG_1_START_VEL)</span>
+                    <span class="c1"># self._rightMotorSetPoint.put(LEG_1_START_VEL)</span>
+
                     <span class="bp">self</span><span class="o">.</span><span class="n">_observerGoFlag</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_leftMotorGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_rightMotorGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowKff</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S1</span>
-                    <span class="c1"># self._state = S5 # PUT BACK WHEN DONE TESTING</span>
+                    <span class="c1"># self._state = S1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S5</span> <span class="c1"># PUT BACK WHEN DONE TESTING</span>
 
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S1</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">get</span><span class="p">():</span>
@@ -392,22 +404,26 @@
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S5</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowGo</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_leftMotorSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_rightMotorSetPoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_lineFollowKff</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S6</span>
 
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S6</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lineFound</span><span class="o">.</span><span class="n">get</span><span class="p">():</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_centerStartDist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-                    <span class="k">while</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centerStartDist</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">ROMI_LINE_OFFSET</span><span class="p">:</span>
-                        <span class="k">yield</span>
-
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S7</span>
+                <span class="c1"># if not self._lineFound.get():</span>
+                <span class="c1">#     self._centerStartDist = self._observerCenterDistance.get()</span>
+                <span class="c1">#     # self._state = S7</span>
+                <span class="c1">#     self._state = S8</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_centerStartDist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S7</span>
             
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S7</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                <span class="k">pass</span>
+                <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_observerCenterDistance</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centerStartDist</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">ROMI_LINE_OFFSET</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S8</span>
             
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="n">S8</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_goFlag</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="n">S0</span>
                 <span class="k">pass</span>
             
 
