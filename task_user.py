@@ -503,24 +503,6 @@ class task_user:
                 # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
                 # value = yield from multichar_input(self._ser)
                 ############################################
-
-                ############################################
-                # # BATTERY DROOP COMPENSATION
-                ############################################
-                # adcVal = self._battAdc.read()
-
-                # adcVoltage = (adcVal / 4096 * 3.3)
-
-                # # Scale for 4.7k and 10k voltage divider
-                # battVoltage = adcVoltage / 0.305
-
-                # # Calculate scaling factor
-                # effortScale = 6.5 / battVoltage
-
-                # self._ser.write(f'Voltage: {battVoltage}V, Scale: {effortScale}, output: {battVoltage * effortScale}\r\n')
-                ############################################
-
-
                 ############################################
                 # BATTERY LEVEL
                 ############################################
@@ -540,32 +522,6 @@ class task_user:
                 distance = self._ultrasonicDistance.get()
                 self._ser.write(f"Ultrasonic distance: {distance:.2f}cm\r\n")
                 ############################################
-
-                ############################################
-                # IMU
-                ############################################
-                # yield from self._imu.tare_accel_gyro()
-
-                # # Give imu time to settl
-                # time.sleep_ms(10)
-                # yield
-                # time.sleep_ms(10)
-                # yield
-                # time.sleep_ms(10)
-                # yield
-
-                # ax = self._Ax.get()
-                # ay = self._Ay.get()
-                # az = self._Az.get()
-                # gx = self._Gx.get()
-                # gy = self._Gy.get()
-                # gz = self._Gz.get()
-
-                # self._ser.write("Accelerometer data: \r\n")
-                # for x in (ax, ay, az, gx, gy, gz):
-                #     self._ser.write(f"  {x}\r\n")
-
-                # self._ser.write("\r\n")
 
 
 
@@ -803,6 +759,7 @@ class task_user:
 
 
                     yield
+
 
 
             # -----------------------

@@ -352,9 +352,11 @@ def shutdown_system():
         pass
 
     gc.collect()
+    print(f"Memory free: {gc.mem_free()}")
 
     try:
         print(task_list)
+        gc.collect()
         print(show_all())
     except MemoryError as e:
         print("Diagnostics skipped due to low memory")

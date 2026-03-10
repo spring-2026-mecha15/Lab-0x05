@@ -1,6 +1,3 @@
-''' This file demonstrates an example motor task using a custom class with a
-    run method implemented as a generator
-'''
 from drivers.motor import Motor
 from drivers.encoder import Encoder
 from task_share   import Share, Queue
@@ -206,17 +203,6 @@ class task_motor:
                     # # self._dataValues.put(pos)
                     self._dataValues.put(vel)                                   # Store velocity to be reported to output
                     self._timeValues.put(int(ticks_diff(t, self._startTime) / 1000)) # Convert from uS to mS (10^3)
-                
-                ######################
-                ## NOTE: This has been moved to user task
-                ###################
-                # # When the queues are full, data collection is over
-                # if self._dataValues.full():
-                #     # print("Exiting motor loop")
-                #     self._state = S1_WAIT
-                #     self._goFlag.put(False)
-                #     self._mot.disable()
-                # """
 
 
             

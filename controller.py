@@ -75,13 +75,11 @@ class PIController:
         self._setpoint = value
 
     def set_feed_forward(self, setpoint: float, gain: float) -> None:
-        """
-        Set feed-forward setpoint and gain.
+        # Set feed-forward setpoint and gain.
 
-        Feed-forward effort is computed as:
-            ff_term = gain * setpoint
-        and is added to the PI effort before saturation.
-        """
+        # Feed-forward effort is computed as:
+        #     ff_term = gain * setpoint
+        # and is added to the PI effort before saturation.
         self._ff_setpoint = setpoint
         self._Kff = gain
 
@@ -89,17 +87,12 @@ class PIController:
     # Control methods
     # --------------------
     def reset(self) -> None:
-        """
-        Reset integral state and initialize the time reference.
-        """
+        # Reset integral state and initialize the time reference.
         self._i_error = 0.0
         self._last_ticksus = ticks_us()
 
     def run(self) -> None:
-        """
-        Run one PI update with anti-windup protection.
-        """
-
+        # Run one PI update with anti-windup protection.
         # --- Time delta (wrap-safe) ---
         now_us = ticks_us()
         dt_s = ticks_diff(now_us, self._last_ticksus) * 1e-6  # µs -> s

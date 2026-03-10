@@ -100,8 +100,8 @@ class task_competition:
                     self._lineFollowGo.put(1)
                     self._lineFollowKff.put(0)
 
-                    # self._state = S1
-                    self._state = S5 # PUT BACK WHEN DONE TESTING
+                    self._state = S1
+                    # self._state = S5 # PUT BACK WHEN DONE TESTING
 
             elif self._state == S1:
                 if not self._goFlag.get():
