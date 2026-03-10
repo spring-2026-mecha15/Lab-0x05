@@ -3,4 +3,4 @@ desktop/data/
 desktop/__pycache__/
 .venv/
 test.csv
-test.csv
+docs/build/
