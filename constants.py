@@ -30,6 +30,9 @@ try:
     QTRX_A9 = Pin.cpu.B0
     QTRX_A11 = Pin.cpu.C1
     QTRX_A13 = Pin.cpu.C0
+    
+    PIN_TRIG = Pin.cpu.C13
+    PIN_ECHO = Pin.cpu.B7
 
     BATT_ADC = Pin.cpu.B1
 
