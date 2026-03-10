@@ -313,13 +313,11 @@
 <div class="viewcode-block" id="PIController.set_feed_forward">
 <a class="viewcode-back" href="../api.html#controller.PIController.set_feed_forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_feed_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">setpoint</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set feed-forward setpoint and gain.</span>
+        <span class="c1"># Set feed-forward setpoint and gain.</span>
 
-<span class="sd">        Feed-forward effort is computed as:</span>
-<span class="sd">            ff_term = gain * setpoint</span>
-<span class="sd">        and is added to the PI effort before saturation.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Feed-forward effort is computed as:</span>
+        <span class="c1">#     ff_term = gain * setpoint</span>
+        <span class="c1"># and is added to the PI effort before saturation.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ff_setpoint</span> <span class="o">=</span> <span class="n">setpoint</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_Kff</span> <span class="o">=</span> <span class="n">gain</span></div>
 
@@ -330,9 +328,7 @@
 <div class="viewcode-block" id="PIController.reset">
 <a class="viewcode-back" href="../api.html#controller.PIController.reset">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Reset integral state and initialize the time reference.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Reset integral state and initialize the time reference.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_i_error</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_ticksus</span> <span class="o">=</span> <span class="n">ticks_us</span><span class="p">()</span></div>
 
@@ -340,10 +336,7 @@
 <div class="viewcode-block" id="PIController.run">
 <a class="viewcode-back" href="../api.html#controller.PIController.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Run one PI update with anti-windup protection.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
+        <span class="c1"># Run one PI update with anti-windup protection.</span>
         <span class="c1"># --- Time delta (wrap-safe) ---</span>
         <span class="n">now_us</span> <span class="o">=</span> <span class="n">ticks_us</span><span class="p">()</span>
         <span class="n">dt_s</span> <span class="o">=</span> <span class="n">ticks_diff</span><span class="p">(</span><span class="n">now_us</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_ticksus</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-6</span>  <span class="c1"># µs -&gt; s</span>

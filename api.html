@@ -268,8 +268,7 @@ top-level hardware code at import time it is not auto-documented here; see
 <dl class="py method">
 <dt class="sig sig-object py" id="controller.PIController.reset">
 <span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/controller.html#PIController.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#controller.PIController.reset" title="Link to this definition">¶</a></dt>
-<dd><p>Reset integral state and initialize the time reference.</p>
-<dl class="field-list simple">
+<dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
 </dd>
@@ -279,8 +278,7 @@ top-level hardware code at import time it is not auto-documented here; see
 <dl class="py method">
 <dt class="sig sig-object py" id="controller.PIController.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/controller.html#PIController.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#controller.PIController.run" title="Link to this definition">¶</a></dt>
-<dd><p>Run one PI update with anti-windup protection.</p>
-<dl class="field-list simple">
+<dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
 </dd>
@@ -290,17 +288,11 @@ top-level hardware code at import time it is not auto-documented here; see
 <dl class="py method">
 <dt class="sig sig-object py" id="controller.PIController.set_feed_forward">
 <span class="sig-name descname"><span class="pre">set_feed_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">setpoint</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/controller.html#PIController.set_feed_forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#controller.PIController.set_feed_forward" title="Link to this definition">¶</a></dt>
-<dd><p>Set feed-forward setpoint and gain.</p>
-<dl class="field-list simple">
+<dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
 </dd>
 </dl>
-<dl class="simple">
-<dt>Feed-forward effort is computed as:</dt><dd><p>ff_term = gain * setpoint</p>
-</dd>
-</dl>
-<p>and is added to the PI effort before saturation.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -318,8 +310,6 @@ top-level hardware code at import time it is not auto-documented here; see
 <h2>Tasks<a class="headerlink" href="#tasks" title="Link to this heading">¶</a></h2>
 <section id="module-task_motor">
 <span id="motor-task"></span><h3>Motor Task<a class="headerlink" href="#module-task_motor" title="Link to this heading">¶</a></h3>
-<p>This file demonstrates an example motor task using a custom class with a
-run method implemented as a generator</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="task_motor.task_motor">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">task_motor.</span></span><span class="sig-name descname"><span class="pre">task_motor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">goFlag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kpVal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kiVal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">setpoint</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataValues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeValues</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wheelDistance</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">motorVoltage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">motorAngVelocity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/task_motor.html#task_motor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#task_motor.task_motor" title="Link to this definition">¶</a></dt>

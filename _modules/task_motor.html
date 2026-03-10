@@ -232,10 +232,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for task_motor</h1><div class="highlight"><pre>
-<span></span><span class="sd">&#39;&#39;&#39; This file demonstrates an example motor task using a custom class with a</span>
-<span class="sd">    run method implemented as a generator</span>
-<span class="sd">&#39;&#39;&#39;</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">drivers.motor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Motor</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">drivers.motor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Motor</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">drivers.encoder</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoder</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">task_share</span><span class="w">   </span><span class="kn">import</span> <span class="n">Share</span><span class="p">,</span> <span class="n">Queue</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">utime</span><span class="w">        </span><span class="kn">import</span> <span class="n">ticks_us</span><span class="p">,</span> <span class="n">ticks_diff</span>
@@ -444,17 +441,6 @@
                     <span class="c1"># # self._dataValues.put(pos)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_dataValues</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">vel</span><span class="p">)</span>                                   <span class="c1"># Store velocity to be reported to output</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_timeValues</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">ticks_diff</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_startTime</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">))</span> <span class="c1"># Convert from uS to mS (10^3)</span>
-                
-                <span class="c1">######################</span>
-                <span class="c1">## NOTE: This has been moved to user task</span>
-                <span class="c1">###################</span>
-                <span class="c1"># # When the queues are full, data collection is over</span>
-                <span class="c1"># if self._dataValues.full():</span>
-                <span class="c1">#     # print(&quot;Exiting motor loop&quot;)</span>
-                <span class="c1">#     self._state = S1_WAIT</span>
-                <span class="c1">#     self._goFlag.put(False)</span>
-                <span class="c1">#     self._mot.disable()</span>
-                <span class="c1"># &quot;&quot;&quot;</span>
 
 
             
