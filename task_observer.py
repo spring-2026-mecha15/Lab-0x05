@@ -1,117 +1,127 @@
 from micropython import const
 from task_share import Share
-from ulab import numpy as np
+from array import array
 
-from constants import A_D, B_D, C_D, D_D
+from constants import A_D, B_D, C_D
 
 S0_IDLE = const(0)
 S1_RUN  = const(1)
+
 
 class task_observer:
     def __init__(
             self,
             goFlag:                 Share,
-            distLeft:                Share,
-            distRight:               Share,
-            voltageLeft:             Share,
-            voltageRight:            Share,
-            heading:                 Share,
-            headingRate:             Share,
-            observerCenterDistance:  Share,
-            observerHeading:         Share,
-            observerHeadingRate:     Share,
-            observerOmegaLeft:       Share,
-            observerOmegaRight:      Share,
-            observerDistanceLeft:    Share,
-            observerDistanceRight:   Share
+            distLeft:               Share,
+            distRight:              Share,
+            voltageLeft:            Share,
+            voltageRight:           Share,
+            heading:                Share,
+            headingRate:            Share,
+            observerCenterDistance: Share,
+            observerHeading:        Share,
+            observerHeadingRate:    Share,
+            observerOmegaLeft:      Share,
+            observerOmegaRight:     Share,
+            observerDistanceLeft:   Share,
+            observerDistanceRight:  Share
         ):
 
         self._goFlag = goFlag
 
         self.s_L = distLeft
         self.s_R = distRight
-
         self.u_L = voltageLeft
         self.u_R = voltageRight
-
         self.psi = heading
         self.psi_dot = headingRate
 
-        self.A_D = np.array(A_D)
-        self.B_D = np.array(B_D)
-        self.C_D = np.array(C_D)
-        
-        self._observerCenterDistance = observerCenterDistance
-        self._observerHeading = observerHeading
-        self._observerHeadingRate = observerHeadingRate
-        self._observerOmegaLeft = observerOmegaLeft
-        self._observerOmegaRight = observerOmegaRight
-        self._observerDistanceLeft = observerDistanceLeft
-        self._observerDistanceRight = observerDistanceRight
+        # Flatten constant matrices into tuples for zero-allocation row access.
+        # A_D is 4x4, B_D is 4x6, C_D is 4x4.
+        self._A = tuple(v for row in A_D for v in row)  # length 16
+        self._B = tuple(v for row in B_D for v in row)  # length 24
+        self._C = tuple(v for row in C_D for v in row)  # length 16
 
+        # State vectors as mutable float arrays — reused in place every cycle,
+        # so no heap allocation occurs in the 50 Hz hot path.
+        self.x_hat  = array('f', [0.0, 0.0, 0.0, 0.0])  # 4-element state
+        self.y_hat  = array('f', [0.0, 0.0, 0.0, 0.0])  # 4-element output
+        self._x_new = array('f', [0.0, 0.0, 0.0, 0.0])  # workspace for A@x+B@u
+        self.u_aug  = array('f', [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # 6-element input
 
-        self.x_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
-        self.y_hat = np.array([[0.0], [0.0], [0.0], [0.0]])
-        self.u_aug = np.array([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]])
+        self._observerCenterDistance  = observerCenterDistance
+        self._observerHeading         = observerHeading
+        self._observerHeadingRate     = observerHeadingRate
+        self._observerOmegaLeft       = observerOmegaLeft
+        self._observerOmegaRight      = observerOmegaRight
+        self._observerDistanceLeft    = observerDistanceLeft
+        self._observerDistanceRight   = observerDistanceRight
 
         self._state = S0_IDLE
 
+    @staticmethod
+    def _update_x(A, B, x, u, out):
+        # Compute out = A(4x4)@x(4) + B(4x6)@u(6) with zero heap allocation.
+        # A and B are flat tuples (row-major), x/u/out are array.array('f').
+        for i in range(4):
+            s = A[i*4]*x[0] + A[i*4+1]*x[1] + A[i*4+2]*x[2] + A[i*4+3]*x[3] \
+              + B[i*6]*u[0] + B[i*6+1]*u[1] + B[i*6+2]*u[2] \
+              + B[i*6+3]*u[3] + B[i*6+4]*u[4] + B[i*6+5]*u[5]
+            out[i] = s
+
+    @staticmethod
+    def _update_y(C, x, out):
+        # Compute out = C(4x4)@x(4) with zero heap allocation.
+        for i in range(4):
+            out[i] = C[i*4]*x[0] + C[i*4+1]*x[1] + C[i*4+2]*x[2] + C[i*4+3]*x[3]
+
     def update(self, u_L, u_R, s_L, s_R, psi, psi_dot):
-        
-        # Updates the state estimate using the latest motor commands and sensor readings.
-        # Must be called at exactly Ts = 0.02s (50 Hz).
-        
-        # State Estimation Parameters:
-        # -----------
-        # u_L     : float : Commanded left motor voltage (Volts) 
-        # u_R     : float : Commanded right motor voltage (Volts)
-        # s_L     : float : Measured left wheel distance from encoders (mm)
-        # s_R     : float : Measured right wheel distance from encoders (mm)
-        # psi     : float : Measured heading/yaw from BNO055 IMU (radians)
-        # psi_dot : float : Measured yaw rate from BNO055 IMU (radians/sec)
-        
-        # Returns:
-        # --------
-        # x_hat   : ulab.numpy.ndarray : The new 4x1 state estimate vector
+        # Load inputs into reusable buffer.
+        u = self.u_aug
+        u[0] = u_L; u[1] = u_R; u[2] = s_L
+        u[3] = s_R; u[4] = psi; u[5] = psi_dot
 
-        self.u_aug[0][0] = u_L
-        self.u_aug[1][0] = u_R
-        self.u_aug[2][0] = s_L
-        self.u_aug[3][0] = s_R
-        self.u_aug[4][0] = psi
-        self.u_aug[5][0] = psi_dot
-        
-        self.x_hat = np.dot(self.A_D, self.x_hat) + np.dot(self.B_D, self.u_aug)
-        self.y_hat = np.dot(self.C_D, self.x_hat)
+        # x_new = A @ x_hat + B @ u_aug  (zero allocation)
+        self._update_x(self._A, self._B, self.x_hat, u, self._x_new)
 
-        return
-    
+        # Copy x_new into x_hat in place so the buffer objects never change.
+        x = self.x_hat
+        n = self._x_new
+        x[0] = n[0]; x[1] = n[1]; x[2] = n[2]; x[3] = n[3]
+
+        # y_hat = C @ x_hat  (zero allocation)
+        self._update_y(self._C, self.x_hat, self.y_hat)
+
     def run(self):
         while True:
-            if self._state == S0_IDLE:
-                if self._goFlag.get(S0_IDLE):
-                    self._state = S1_RUN
+            # if self._state == S0_IDLE:
+            #     if self._goFlag.get():
+            #         self._state = S1_RUN
 
-            elif self._state == S1_RUN:
-                if not self._goFlag.get(S0_IDLE):
-                    self._state = S0_IDLE
-
-
-                else:
-                    self.update(
-                        self.u_L.get(),
-                        self.u_R.get(),
-                        self.s_L.get(),
-                        self.s_R.get(),
-                        self.psi.get(),
-                        self.psi_dot.get(),
-                    )
-                    # Publish observer states as scalar shares.
-                    self._observerCenterDistance.put(float(self.x_hat[0][0]))
-                    self._observerDistanceLeft.put(float(self.y_hat[0][0]))
-                    self._observerDistanceRight.put(float(self.y_hat[1][0]))
-                    self._observerHeading.put(float(self.y_hat[2][0]))
-                    self._observerHeadingRate.put(float(self.y_hat[3][0]))
-                    self._observerOmegaLeft.put(float(self.x_hat[2][0]))
-                    self._observerOmegaRight.put(float(self.x_hat[3][0]))
+            # elif self._state == S1_RUN:
+            #     if not self._goFlag.get():
+            #         self._state = S0_IDLE
+            #     else:
+            #         self.update(
+            #             self.u_L.get(),
+            #             self.u_R.get(),
+            #             self.s_L.get(),
+            #             self.s_R.get(),
+            #             self.psi.get(),
+            #             self.psi_dot.get(),
+            #         )
+            #         # Publish: array.array element access avoids the float()
+            #         # wrapper needed with ulab, keeping allocation minimal.
+            #         x = self.x_hat
+            #         y = self.y_hat
+            #         self._observerCenterDistance.put(x[0])
+            #         self._observerDistanceLeft.put(y[0])
+            #         self._observerDistanceRight.put(y[1])
+            #         self._observerHeading.put(y[2])
+            #         self._observerHeadingRate.put(y[3])
+            #         self._observerOmegaLeft.put(x[2])
+            #         self._observerOmegaRight.put(x[3])
+            self._observerCenterDistance.put(
+                0.5 * (self.s_L.get() + self.s_R.get())
+            )
             yield 0

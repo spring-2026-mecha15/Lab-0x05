@@ -10,6 +10,7 @@
 # ============================================================================
 
 import gc
+import micropython
 
 # Hardware drivers and timing
 print("Importing Micropyhthon")
@@ -46,8 +47,6 @@ from task_reflectance import task_reflectance
 from task_imu import task_imu
 from task_observer import task_observer
 gc.collect()
-from task_observer import task_observer
-gc.collect()
 from task_competition import task_competition
 from task_ultrasonic import task_ultrasonic
 gc.collect()
@@ -55,10 +54,18 @@ print(f"Mem free: {gc.mem_free()}")
 
 print("Loaing Scheduling")
 # Inter-task communication and scheduling
-from task_share import Share, Queue, show_all
+from task_share import Share, Queue, show_all, clear_all
 from cotask import Task, task_list
 gc.collect()
 print(f"Mem free: {gc.mem_free()}")
+
+micropython.alloc_emergency_exception_buf(100)
+
+# These registries live at module scope, so clear them before rebuilding the
+# system after a KeyboardInterrupt-triggered rerun from the REPL.
+task_list.clear()
+clear_all()
+gc.collect()
 
 
 # ============================================================================
@@ -284,55 +291,92 @@ ultrasonicTask = task_ultrasonic(
 # Register tasks with scheduler
 # Larger priority value is higher priority. 0: run as available
 task_list.append(Task(userTask.run, name="User Int. Task",
-                      priority=0, period=0, profile=False))
+                      priority=100, period=100, profile=False))
 task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
-                      priority=1, period=40, profile=True))
+                      priority=2, period=40, profile=False))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
-                      priority=2, period=50, profile=True))
+                      priority=3, period=30, profile=False))
 task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
-                      priority=3, period=20, profile=True))
+                      priority=4, period=100, profile=True))
 task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
-                      priority=4, period=20, profile=True))
+                      priority=5, period=50, profile=False))
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
-                      priority=5, period=20, profile=True))
-task_list.append(Task(imuTask.run, name="IMU Task",
-                      priority=6, period=50, profile=True))
+                      priority=6, period=50, profile=False))
+# task_list.append(Task(imuTask.run, name="IMU Task",
+#                       priority=7, period=100, profile=True))
 task_list.append(Task(observerTask.run, name="Observer Task", # MUST have 20ms period
-                      priority=7, period=20, profile=True))
+                      priority=8, period=20, profile=True))
 task_list.append(Task(competitionTask.run, name="Competition Task",
-                      priority=8, period=50, profile=True))
+                      priority=9, period=50, profile=False))
 
 class RomiGarbage:
     def run(self):
         while True:
+            # startmem = gc.mem_free()
             gc.collect()
+            # print(f'gc: {gc.mem_free() - startmem}')
             yield
 rg = RomiGarbage()
 
 task_list.append(Task(rg.run, name="Garbage collection",
-                      priority=0, period=5000, profile=True))
+                      priority=0, period=100, profile=True))
 
 gc.collect()
+
+
+def shutdown_system():
+    leftMotorGo.put(0)
+    rightMotorGo.put(0)
+    lineFollowGo.put(0)
+    reflectanceMode.put(0)
+    imuMode.put(0)
+    observerGoFlag.put(0)
+    competitionGo.put(0)
+
+    leftMotor.disable()
+    rightMotor.disable()
+
+    try:
+        tim1.deinit()
+    except AttributeError:
+        pass
+
+    try:
+        tim2.deinit()
+    except AttributeError:
+        pass
+
+    try:
+        tim3.deinit()
+    except AttributeError:
+        pass
+
+    gc.collect()
+
+    try:
+        print(task_list)
+        print(show_all())
+    except MemoryError as e:
+        print("Diagnostics skipped due to low memory")
+        print(e)
+
+    task_list.clear()
+    clear_all()
+    gc.collect()
 
 # ============================================================================
 # MAIN SCHEDULING LOOP
 # ============================================================================
 
 # Run the task scheduler continuously until user interrupts with Ctrl-C
+interrupted = False
+
 while True:
     try:
         # Execute highest-priority ready task
         task_list.pri_sched()
 
     except KeyboardInterrupt:
-        # Graceful shutdown: disable motors and exit
         print("Program Terminating")
-        leftMotor.disable()
-        rightMotor.disable()
-        del userTask
+        shutdown_system()
         break
-
-# Print final statistics and status information
-print("\n")
-print(task_list)
-print(show_all())

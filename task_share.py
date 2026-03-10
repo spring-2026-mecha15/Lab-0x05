@@ -48,6 +48,12 @@ def show_all ():
     return '\n'.join (gen)
 
 
+## Clear the global registry of shares and queues so objects from a previous
+#  REPL run don't stay referenced after KeyboardInterrupt.
+def clear_all ():
+    share_list.clear ()
+
+
 ## Base class for queues and shares which exchange data between tasks.
 # 
 #  One should never create an object from this class; it doesn't do anything

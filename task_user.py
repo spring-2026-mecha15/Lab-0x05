@@ -311,7 +311,7 @@ class task_user:
                         if inChar in {"\r", "\n"}:
                             # Clear any remaining input then exit help
                             while self._ser.any():
-                                self._ser.read(None)
+                                self._ser.read(1)
                             break
                     yield
                 # Return to main prompt
@@ -604,7 +604,7 @@ class task_user:
                         if inChar in {"\r", "\n"}:
                             # Clear any remaining input then exit help
                             while self._ser.any():
-                                self._ser.read(None)
+                                self._ser.read(1)
                             break
                     yield 0
 
@@ -625,7 +625,7 @@ class task_user:
                         if inChar in {"\r", "\n"}:
                             # Clear any remaining input then exit help
                             while self._ser.any():
-                                self._ser.read(None)
+                                self._ser.read(1)
                             break
                     yield 0
 
@@ -677,7 +677,7 @@ class task_user:
                         if inChar in {"\r", "\n"}:
                             # Clear any remaining input then exit help
                             while self._ser.any():
-                                self._ser.read(None)
+                                self._ser.read(1)
                             break
                     yield 0
                     
@@ -804,8 +804,6 @@ class task_user:
 
                     yield
 
-            #Need to import a logging thing which we can then graph.
-            
 
             # -----------------------
             # S10_State_Estimation: State Estimation Test
@@ -861,18 +859,21 @@ class task_user:
                 #     "omegaR_error (rad/s)\r\n"
                 # )
 
-                stream_decimation = 1
+                stream_decimation = 5
                 sample_idx = 0
                 start_time = ticks_us()
 
                 while True:
                     # Check if observer has traveled X distance, then stop motors
                     # if not self._observerGoFlag.get():
-                    if not self._competitionGoFlag.get():
+                    if self._competitionGoFlag.get() == 0:
                         break
 
-                    if (sample_idx % stream_decimation) == 0:
-                        self._ser.write(f"c: {self._observerCenterDistance.get()}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
+                    self._ser.write(f"c: {self._observerCenterDistance.get()}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
+                    # self._ser.write(f"c: {0.5 * (self._wheelDistLeft.get() + self._wheelDistRight.get())}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
+
+
+                    # if (sample_idx % stream_decimation) == 0:
                     #     t_ms = int(ticks_diff(ticks_us(), start_time) / 1000)
                     #     wheelDistLeft = self._wheelDistLeft.get()
                     #     wheelDistRight = self._wheelDistRight.get()
@@ -939,14 +940,14 @@ class task_user:
                     #     #     )
                     #     # ))
                     #     # self._ser.write(error_line)
-                    sample_idx += 1
+                    # sample_idx += 1
 
                     if self._ser.any():
                         inChar = self._ser.read(1).decode()
                         if inChar in {"\r", "\n"}:
                             # Clear any remaining input then exit help
                             while self._ser.any():
-                                self._ser.read(None)
+                                self._ser.read(1)
                             break
                     yield 0
                     

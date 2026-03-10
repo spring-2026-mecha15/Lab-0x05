@@ -71,6 +71,14 @@ class task_competition:
 
     def run(self):
         while True:
+            if (self._state != 0) and (self._goFlag.get() == 0):
+                self._leftMotorGo.put(0)
+                self._rightMotorGo.put(0)
+                self._observerGoFlag.put(0)
+                self._lineFollowGo.put(0)
+                self._reflectanceMode.put(0)
+                self._state = 0
+
             if self._state == S0:
                 if self._goFlag.get():
                     # Set initial configuration
@@ -78,18 +86,22 @@ class task_competition:
                     self._centerStartDist = self._observerCenterDistance.get()
                     self._reflectanceMode.put(3)
                     self._velocity = LEG_1_START_VEL
-                    self._lineFollowSetPoint.put(self._velocity)
-                    # self._lineFollowSetPoint.put(25)
-                    self._leftMotorSetPoint.put(LEG_1_START_VEL)
-                    self._rightMotorSetPoint.put(LEG_1_START_VEL)
+
+                    self._lineFollowSetPoint.put(50)
+                    # self._leftMotorSetPoint.put(50)
+                    # self._rightMotorSetPoint.put(50)
+                    # self._lineFollowSetPoint.put(self._velocity)
+                    # self._leftMotorSetPoint.put(LEG_1_START_VEL)
+                    # self._rightMotorSetPoint.put(LEG_1_START_VEL)
+
                     self._observerGoFlag.put(1)
                     self._leftMotorGo.put(1)
                     self._rightMotorGo.put(1)
                     self._lineFollowGo.put(1)
                     self._lineFollowKff.put(0)
 
-                    self._state = S1
-                    # self._state = S5 # PUT BACK WHEN DONE TESTING
+                    # self._state = S1
+                    self._state = S5 # PUT BACK WHEN DONE TESTING
 
             elif self._state == S1:
                 if not self._goFlag.get():
@@ -154,22 +166,26 @@ class task_competition:
             elif self._state == S5:
                 self._lineFollowGo.put(1)
                 self._lineFollowSetPoint.put(50)
+                self._leftMotorSetPoint.put(50)
+                self._rightMotorSetPoint.put(50)
                 self._lineFollowKff.put(0)
                 self._state = S6
 
             elif self._state == S6:
-                if not self._lineFound.get():
-                    self._centerStartDist = self._observerCenterDistance.get()
-                    while (self._observerCenterDistance.get() - self._centerStartDist) <= ROMI_LINE_OFFSET:
-                        yield
-
-                    self._state = S7
+                # if not self._lineFound.get():
+                #     self._centerStartDist = self._observerCenterDistance.get()
+                #     # self._state = S7
+                #     self._state = S8
+                self._centerStartDist = self._observerCenterDistance.get()
+                self._state = S7
             
             elif self._state == S7:
-                self._goFlag.put(0)
-                pass
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= ROMI_LINE_OFFSET:
+                    self._state = S8
             
             elif self._state == S8:
+                self._goFlag.put(0)
+                self._state = S0
                 pass
             
 

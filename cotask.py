@@ -309,6 +309,12 @@ class TaskList:
         self.pri_list = []
 
 
+    ## Remove all tasks from the scheduler so old task objects don't persist
+    #  across REPL reruns after a KeyboardInterrupt.
+    def clear(self):
+        self.pri_list.clear()
+
+
     ## Append a task to the task list. The list will be sorted by task 
     #  priorities so that the scheduler can quickly find the highest priority
     #  task which is ready to run at any given time. 

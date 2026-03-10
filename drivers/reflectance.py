@@ -35,6 +35,10 @@ class Reflectance_Sensor:
         # Track last valid centroid for line loss recovery
         self._last_valid_centroid = 0.0
 
+        # Precompute symmetric weights once to avoid rebuilding them every read.
+        self._weights = tuple(range((-self._numSensors // 2) + 1,
+                        (self._numSensors // 2) + 1))
+
         # Load calibration from file into memory (cached for fast access)
         self._calibration = self._load_calibration_dicts(self._CALIBRATION_FILE)
 
@@ -77,17 +81,21 @@ class Reflectance_Sensor:
         # Use cached calibration from memory (loaded during __init__)
         calibration = self._calibration
 
-        # Average multiple raw reads to reduce noise
-        raw_samples = [self._read_raw() for _ in range(self._READ_SAMPLES)]
-        raw = [
-            sum(sample[i] for sample in raw_samples) // self._READ_SAMPLES
-            for i in range(self._numSensors)
-        ]
+        # Average multiple raw reads to reduce noise without building nested
+        # sample lists on every cycle.
+        raw = [0] * self._numSensors
+        for _ in range(self._READ_SAMPLES):
+            sample = self._read_raw()
+            for i in range(self._numSensors):
+                raw[i] += sample[i]
+
+        for i in range(self._numSensors):
+            raw[i] //= self._READ_SAMPLES
 
         # List to store sensor readings with calibration applied
-        calibrated = []
+        calibrated = array('f', [0.0] * self._numSensors)
 
-        for r, cal in zip(raw, calibration):
+        for i, (r, cal) in enumerate(zip(raw, calibration)):
             dark = cal["dark"]
             light = cal["light"]
 
@@ -98,11 +106,10 @@ class Reflectance_Sensor:
             else:
                 value = 0
 
-            calibrated.append(value)
+            calibrated[i] = value
 
         # Weighted line position
         # This weighting assumes a symmetric, odd-count sensor array.
-        weights = list(range((-self._numSensors // 2) + 1, (self._numSensors // 2) + 1))
         total = sum(calibrated)
 
         # Threshold-based line loss detection
@@ -112,7 +119,7 @@ class Reflectance_Sensor:
 
         # Compute weighted sensor values
         if total != 0 and line_detected:
-            centroid = sum(w * v for w, v in zip(weights, calibrated)) / total
+            centroid = sum(w * v for w, v in zip(self._weights, calibrated)) / total
             self._last_valid_centroid = centroid  # Store for line loss recovery
         else:
             # Line lost: return last valid centroid
