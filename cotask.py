@@ -133,6 +133,38 @@ class Task:
         #  scheduler
         self.go_flag = False
 
+    @property
+    def name(self):
+        return self.__dict__.get('name')
+
+    @name.setter
+    def name(self, value):
+        self.__dict__['name'] = value
+
+    @property
+    def priority(self):
+        return self.__dict__.get('priority')
+
+    @priority.setter
+    def priority(self, value):
+        self.__dict__['priority'] = value
+
+    @property
+    def period(self):
+        return self.__dict__.get('period')
+
+    @period.setter
+    def period(self, value):
+        self.__dict__['period'] = value
+
+    @property
+    def go_flag(self):
+        return self.__dict__.get('go_flag')
+
+    @go_flag.setter
+    def go_flag(self, value):
+        self.__dict__['go_flag'] = value
+
 
     ## This method is called by the scheduler; it attempts to run this task.
     #  If the task is not yet ready to run, this method returns @c False
@@ -308,6 +340,14 @@ class TaskList:
         #  that priority. 
         self.pri_list = []
 
+    @property
+    def pri_list(self):
+        return self.__dict__.get('pri_list')
+
+    @pri_list.setter
+    def pri_list(self, value):
+        self.__dict__['pri_list'] = value
+
 
     ## Append a task to the task list. The list will be sorted by task 
     #  priorities so that the scheduler can quickly find the highest priority
@@ -389,7 +429,6 @@ class TaskList:
 ## This is @b the main task list which is created for scheduling when 
 #  @c cotask.py is imported into a program. 
 task_list = TaskList()
-
 
 
 

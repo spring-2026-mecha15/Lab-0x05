@@ -74,6 +74,54 @@ class BNO055:
         self._vec3_buf = bytearray(6)
         self._quat_buf = bytearray(8)
 
+    @property
+    def i2c(self):
+        return self.__dict__.get('i2c')
+
+    @i2c.setter
+    def i2c(self, value):
+        self.__dict__['i2c'] = value
+
+    @property
+    def address(self):
+        return self.__dict__.get('address')
+
+    @address.setter
+    def address(self, value):
+        self.__dict__['address'] = value
+
+    @property
+    def mode(self):
+        return self.__dict__.get('mode')
+
+    @mode.setter
+    def mode(self, value):
+        self.__dict__['mode'] = value
+
+    @property
+    def accel_tare(self):
+        return self.__dict__.get('accel_tare')
+
+    @accel_tare.setter
+    def accel_tare(self, value):
+        self.__dict__['accel_tare'] = value
+
+    @property
+    def gyro_tare(self):
+        return self.__dict__.get('gyro_tare')
+
+    @gyro_tare.setter
+    def gyro_tare(self, value):
+        self.__dict__['gyro_tare'] = value
+
+    @property
+    def euler_tare(self):
+        return self.__dict__.get('euler_tare')
+
+    @euler_tare.setter
+    def euler_tare(self, value):
+        self.__dict__['euler_tare'] = value
+
     # ---------- Driver Helpers ----------
     def _read_byte(self, register):
         self.i2c.mem_read(self._buf1, self.address, register)

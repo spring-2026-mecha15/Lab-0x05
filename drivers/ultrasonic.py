@@ -53,6 +53,54 @@ class UltrasonicSensor:
         self.num_samples = 1  # Default number of samples to 1 when filter is disabled
         self.distances = []  # Store measurements
 
+    @property
+    def trig(self):
+        return self.__dict__.get('trig')
+
+    @trig.setter
+    def trig(self, value):
+        self.__dict__['trig'] = value
+
+    @property
+    def echo(self):
+        return self.__dict__.get('echo')
+
+    @echo.setter
+    def echo(self, value):
+        self.__dict__['echo'] = value
+
+    @property
+    def detection_threshold(self):
+        return self.__dict__.get('detection_threshold')
+
+    @detection_threshold.setter
+    def detection_threshold(self, value):
+        self.__dict__['detection_threshold'] = value
+
+    @property
+    def filter_enabled(self):
+        return self.__dict__.get('filter_enabled')
+
+    @filter_enabled.setter
+    def filter_enabled(self, value):
+        self.__dict__['filter_enabled'] = value
+
+    @property
+    def num_samples(self):
+        return self.__dict__.get('num_samples')
+
+    @num_samples.setter
+    def num_samples(self, value):
+        self.__dict__['num_samples'] = value
+
+    @property
+    def distances(self):
+        return self.__dict__.get('distances')
+
+    @distances.setter
+    def distances(self, value):
+        self.__dict__['distances'] = value
+
     def loop(self):
         """Perform a measurement cycle and update the list of distances."""
         # Ensure the trigger pin is low for a clean pulse

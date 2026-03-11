@@ -28,6 +28,30 @@ class VelocityConfig:
         self.kp = kp
         self.ki = ki
 
+    @property
+    def setpoint(self):
+        return self.__dict__.get('setpoint')
+
+    @setpoint.setter
+    def setpoint(self, value):
+        self.__dict__['setpoint'] = value
+
+    @property
+    def kp(self):
+        return self.__dict__.get('kp')
+
+    @kp.setter
+    def kp(self, value):
+        self.__dict__['kp'] = value
+
+    @property
+    def ki(self):
+        return self.__dict__.get('ki')
+
+    @ki.setter
+    def ki(self, value):
+        self.__dict__['ki'] = value
+
 # Test configurations to iterate over
 configs = [
     # VelocityConfig(50, 0.04, 0.2),

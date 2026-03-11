@@ -24,7 +24,13 @@ results
 
 ```{toctree}
 :maxdepth: 2
-:caption: API Reference
+:caption: Files
 
-api
+api/generated/modules
+```
+
+```{toctree}
+:caption: Links
+
+GitHub <https://github.com/spring-2026-mecha15/Lab-0x05>
 ```

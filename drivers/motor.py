@@ -44,6 +44,30 @@ class Motor:
         self.disable()
         self.set_effort(0)
 
+    @property
+    def pwm(self):
+        return self.__dict__.get('pwm')
+
+    @pwm.setter
+    def pwm(self, value):
+        self.__dict__['pwm'] = value
+
+    @property
+    def sleep(self):
+        return self.__dict__.get('sleep')
+
+    @sleep.setter
+    def sleep(self, value):
+        self.__dict__['sleep'] = value
+
+    @property
+    def dir(self):
+        return self.__dict__.get('dir')
+
+    @dir.setter
+    def dir(self, value):
+        self.__dict__['dir'] = value
+
     def enable(self):
         # Enable the motor driver by setting the SLEEP pin high.
 

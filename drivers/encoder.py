@@ -55,6 +55,62 @@ class Encoder:
         # decrement when timer wrapped from 0 -> 0xFFFF (underflow)
         self.timer_reloads = 0
 
+    @property
+    def timer(self):
+        return self.__dict__.get('timer')
+
+    @timer.setter
+    def timer(self, value):
+        self.__dict__['timer'] = value
+
+    @property
+    def position(self):
+        return self.__dict__.get('position')
+
+    @position.setter
+    def position(self, value):
+        self.__dict__['position'] = value
+
+    @property
+    def prev_count(self):
+        return self.__dict__.get('prev_count')
+
+    @prev_count.setter
+    def prev_count(self, value):
+        self.__dict__['prev_count'] = value
+
+    @property
+    def prev_ticks(self):
+        return self.__dict__.get('prev_ticks')
+
+    @prev_ticks.setter
+    def prev_ticks(self, value):
+        self.__dict__['prev_ticks'] = value
+
+    @property
+    def delta(self):
+        return self.__dict__.get('delta')
+
+    @delta.setter
+    def delta(self, value):
+        self.__dict__['delta'] = value
+
+    @property
+    def dt(self):
+        return self.__dict__.get('dt')
+
+    @dt.setter
+    def dt(self, value):
+        self.__dict__['dt'] = value
+
+    @property
+    def timer_reloads(self):
+        return self.__dict__.get('timer_reloads')
+
+    @timer_reloads.setter
+    def timer_reloads(self, value):
+        self.__dict__['timer_reloads'] = value
+
     def _callback(self, timer_obj):
         # Timer callback invoked on timer reload.
 

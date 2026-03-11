@@ -4,6 +4,7 @@ release = '1.0'
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     'myst_parser',
     'sphinx_autodoc_typehints',
@@ -37,6 +38,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
 html_static_path = ['_static']
+
+autosummary_generate = True
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
 
 # Source file extensions
 source_suffix = {

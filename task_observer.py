@@ -56,6 +56,102 @@ class task_observer:
 
         self._state = S0_IDLE
 
+    @property
+    def s_L(self):
+        return self.__dict__.get('s_L')
+
+    @s_L.setter
+    def s_L(self, value):
+        self.__dict__['s_L'] = value
+
+    @property
+    def s_R(self):
+        return self.__dict__.get('s_R')
+
+    @s_R.setter
+    def s_R(self, value):
+        self.__dict__['s_R'] = value
+
+    @property
+    def u_L(self):
+        return self.__dict__.get('u_L')
+
+    @u_L.setter
+    def u_L(self, value):
+        self.__dict__['u_L'] = value
+
+    @property
+    def u_R(self):
+        return self.__dict__.get('u_R')
+
+    @u_R.setter
+    def u_R(self, value):
+        self.__dict__['u_R'] = value
+
+    @property
+    def psi(self):
+        return self.__dict__.get('psi')
+
+    @psi.setter
+    def psi(self, value):
+        self.__dict__['psi'] = value
+
+    @property
+    def psi_dot(self):
+        return self.__dict__.get('psi_dot')
+
+    @psi_dot.setter
+    def psi_dot(self, value):
+        self.__dict__['psi_dot'] = value
+
+    @property
+    def A_D(self):
+        return self.__dict__.get('A_D')
+
+    @A_D.setter
+    def A_D(self, value):
+        self.__dict__['A_D'] = value
+
+    @property
+    def B_D(self):
+        return self.__dict__.get('B_D')
+
+    @B_D.setter
+    def B_D(self, value):
+        self.__dict__['B_D'] = value
+
+    @property
+    def C_D(self):
+        return self.__dict__.get('C_D')
+
+    @C_D.setter
+    def C_D(self, value):
+        self.__dict__['C_D'] = value
+
+    @property
+    def x_hat(self):
+        return self.__dict__.get('x_hat')
+
+    @x_hat.setter
+    def x_hat(self, value):
+        self.__dict__['x_hat'] = value
+
+    @property
+    def y_hat(self):
+        return self.__dict__.get('y_hat')
+
+    @y_hat.setter
+    def y_hat(self, value):
+        self.__dict__['y_hat'] = value
+
+    @property
+    def u_aug(self):
+        return self.__dict__.get('u_aug')
+
+    @u_aug.setter
+    def u_aug(self, value):
+        self.__dict__['u_aug'] = value
+
     def update(self, u_L, u_R, s_L, s_R, psi, psi_dot):
         
         # Updates the state estimate using the latest motor commands and sensor readings.
