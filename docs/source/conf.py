@@ -39,6 +39,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
 html_static_path = ['_static']
+html_title = project
 
 autosummary_generate = True
 autodoc_default_options = {
@@ -69,6 +70,7 @@ apidoc_modules = [
             os.path.join(_project_root, '.venv'),
             os.path.join(_project_root, 'docs'),
             os.path.join(_project_root, '__pycache__'),
+            os.path.join(_project_root, 'main.py'),
         ],
         'separate_modules': True,
         'module_first': True,
