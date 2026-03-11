@@ -4,3 +4,14 @@ desktop/__pycache__/
 .venv/
 test.csv
 docs/build/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Python caches
+**/__pycache__/
+*.py[cod]
+
+# Sphinx generated API stubs
+docs/source/api/generated/
