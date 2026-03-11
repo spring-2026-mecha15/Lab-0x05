@@ -5,6 +5,7 @@ release = '1.0'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.apidoc',
     'sphinx.ext.viewcode',
     'myst_parser',
     'sphinx_autodoc_typehints',
@@ -57,3 +58,19 @@ import sys, os
 sys.path.insert(0, os.path.abspath('../..'))          # project root (main.py, task_*.py, etc.)
 sys.path.insert(0, os.path.abspath('../../drivers'))  # drivers/ package
 sys.path.insert(0, os.path.abspath('../../desktop'))  # desktop/ tools
+
+# Run apidoc during sphinx-build (replaces separate Makefile apidoc step)
+_project_root = os.path.abspath('../..')
+apidoc_modules = [
+    {
+        'path': _project_root,
+        'destination': 'api/generated',
+        'exclude_patterns': [
+            os.path.join(_project_root, '.venv'),
+            os.path.join(_project_root, 'docs'),
+            os.path.join(_project_root, '__pycache__'),
+        ],
+        'separate_modules': True,
+        'module_first': True,
+    },
+]
