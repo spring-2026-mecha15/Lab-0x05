@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>Overview: module code - ME 405 Term Project - Mecha15</title>
+        <title>multichar_input - ME 405 Term Project - Mecha15</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -255,25 +255,117 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <h1>All modules for which code is available</h1>
-<ul><li><a href="controller.html">controller</a></li>
-<li><a href="cotask.html">cotask</a></li>
-<li><a href="drivers/encoder.html">drivers.encoder</a></li>
-<li><a href="drivers/imu.html">drivers.imu</a></li>
-<li><a href="drivers/motor.html">drivers.motor</a></li>
-<li><a href="drivers/reflectance.html">drivers.reflectance</a></li>
-<li><a href="drivers/ultrasonic.html">drivers.ultrasonic</a></li>
-<li><a href="micropython.html">micropython</a></li>
-<li><a href="multichar_input.html">multichar_input</a></li>
-<li><a href="task_competition.html">task_competition</a></li>
-<li><a href="task_imu.html">task_imu</a></li>
-<li><a href="task_line_follow.html">task_line_follow</a></li>
-<li><a href="task_motor.html">task_motor</a></li>
-<li><a href="task_observer.html">task_observer</a></li>
-<li><a href="task_reflectance.html">task_reflectance</a></li>
-<li><a href="task_share.html">task_share</a></li>
-<li><a href="task_ultrasonic.html">task_ultrasonic</a></li>
-</ul>
+          <h1>Source code for multichar_input</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pyb</span><span class="w"> </span><span class="kn">import</span> <span class="n">USB_VCP</span><span class="p">,</span> <span class="n">UART</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">task_share</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseShare</span><span class="p">,</span> <span class="n">Share</span>
+
+<div class="viewcode-block" id="multichar_input">
+<a class="viewcode-back" href="../api/generated/multichar_input.html#multichar_input.multichar_input">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">multichar_input</span><span class="p">(</span><span class="n">ser</span><span class="p">,</span> <span class="p">):</span>
+
+    <span class="c1"># A serial port object to use for reading characters</span>
+    <span class="c1">#ser: stream = USB_VCP()</span>
+    <span class="c1"># ser: stream = UART(1, 115_200)</span>
+
+    <span class="c1"># A share or queue object where the computed number is to be placed</span>
+    <span class="c1">##out_share: BaseShare = Share(&#39;f&#39;, name=&quot;A float share&quot;)</span>
+
+    <span class="c1"># A character buffer used to store incoming characters as they&#39;re</span>
+    <span class="c1"># received by the command processor</span>
+    <span class="n">char_buf</span><span class="p">:</span> <span class="nb">str</span>      <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="c1"># A set used to quickly check if a character entered by the user is</span>
+    <span class="c1"># a numerical digit.</span>
+    <span class="n">digits</span><span class="p">:</span>   <span class="nb">set</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)))</span>
+
+    <span class="c1"># A set used to quickly check if a character entered by the user is</span>
+    <span class="c1"># a terminator (a carriage return or newline)</span>
+    <span class="n">term</span><span class="p">:</span>     <span class="nb">set</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">}</span>
+
+    <span class="c1"># A flag used to track whether or not the command processing is</span>
+    <span class="c1"># still active.</span>
+    <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># If the command is not done being processed, wait for characters</span>
+    <span class="c1"># and then process them individually.</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+        
+        <span class="c1"># Only read and process characters if they&#39;re available. This</span>
+        <span class="c1"># is to avoid blocking behavior.</span>
+        <span class="k">if</span> <span class="n">ser</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            
+            <span class="c1"># All commands are single characters so only one needs to</span>
+            <span class="c1"># be read from the serial port. The character coming from</span>
+            <span class="c1"># the serial port is of type bytes so it is cast as a</span>
+            <span class="c1"># string.</span>
+            <span class="n">char_in</span> <span class="o">=</span> <span class="n">ser</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+
+
+            <span class="c1"># Digits are simply appended to the incoming character</span>
+            <span class="c1"># buffer and echoed back to the UI.</span>
+            <span class="k">if</span> <span class="n">char_in</span> <span class="ow">in</span> <span class="n">digits</span><span class="p">:</span>
+                <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">char_in</span><span class="p">)</span>
+                <span class="n">char_buf</span> <span class="o">+=</span> <span class="n">char_in</span>
+            
+            <span class="c1"># Decimal points are only valid if they appear once in the</span>
+            <span class="c1"># string, so the period character is ignored if one is</span>
+            <span class="c1"># already in the character buffer. The decimal point is</span>
+            <span class="c1"># echoed if it&#39;s added to the buffer.</span>
+            <span class="k">elif</span> <span class="n">char_in</span> <span class="o">==</span> <span class="s2">&quot;.&quot;</span> <span class="ow">and</span> <span class="s2">&quot;.&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">char_buf</span><span class="p">:</span>
+                <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">char_in</span><span class="p">)</span>
+                <span class="n">char_buf</span> <span class="o">+=</span> <span class="n">char_in</span>
+            
+            <span class="c1"># Dashes are used for negative values but are only valid if</span>
+            <span class="c1"># they&#39;re the first character in the buffer. Valid dashes</span>
+            <span class="c1"># are echoed.</span>
+            <span class="k">elif</span> <span class="n">char_in</span> <span class="o">==</span> <span class="s2">&quot;-&quot;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">char_buf</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">char_in</span><span class="p">)</span>
+                <span class="n">char_buf</span> <span class="o">+=</span> <span class="n">char_in</span>
+            
+            <span class="c1"># If a &quot;rubout&quot; character is received, as would come from</span>
+            <span class="c1"># a serial monitor like PuTTY, and there is at least one</span>
+            <span class="c1"># character in the character buffer then the last character</span>
+            <span class="c1"># in the buffer is removed. Echoing the validated &quot;rubout&quot;</span>
+            <span class="c1"># character deletes the previous digit in the serial</span>
+            <span class="c1"># monitor and also moves the cursor a unit to the left.</span>
+            <span class="k">elif</span> <span class="n">char_in</span> <span class="o">==</span> <span class="s2">&quot;</span><span class="se">\x7f</span><span class="s2">&quot;</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">char_buf</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> 
+                <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\b</span><span class="s2"> </span><span class="se">\b</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">char_buf</span> <span class="o">=</span> <span class="n">char_buf</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            
+            <span class="c1"># If a termination character is received it is interpreted</span>
+            <span class="c1"># as the end of data entry.</span>
+            <span class="k">elif</span> <span class="n">char_in</span> <span class="ow">in</span> <span class="n">term</span><span class="p">:</span>
+                
+                <span class="c1"># If the buffer is empty then the value of the share is</span>
+                <span class="c1"># left unchanged. That way the user can choose not to</span>
+                <span class="c1"># enter a new value even if they&#39;ve already issued the</span>
+                <span class="c1"># command to change a value.</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">char_buf</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Value not changed</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">char_buf</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="n">done</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">return</span> <span class="kc">None</span>
+                    <span class="c1"># Same as doing raise StopIteration(None)</span>
+                    
+                    
+                <span class="c1"># If the character buffer is not empty the termination</span>
+                <span class="c1"># character is interpreted as an end to the user input.</span>
+                <span class="c1"># However if the buffer only contains a single dash or</span>
+                <span class="c1"># period character the termination key is ignored.</span>
+                <span class="k">elif</span> <span class="n">char_buf</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">}:</span>
+                    <span class="n">ser</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">char_buf</span><span class="p">)</span>
+
+                    <span class="c1">##out_share.put(value)</span>
+                    <span class="c1">##ser.write(f&quot;Value set to {value}\r\n&quot;)</span>
+                    <span class="n">char_buf</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                    <span class="n">done</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">return</span> <span class="n">value</span>
+                    <span class="c1"># Same as doing raise StopIteration(value)</span>
+        <span class="k">yield</span></div>
+
+</pre></div>
         </article>
       </div>
       <footer>
