@@ -274,7 +274,8 @@ competitionTask = task_competition(
     leftMotorGo,
     leftMotorSetPoint,
     rightMotorGo,
-    rightMotorSetPoint
+    rightMotorSetPoint,
+    ultrasonicDistance
 )
 
 ultrasonicTask = task_ultrasonic(

@@ -3,16 +3,32 @@ from task_share import Share
 from time import ticks_ms, ticks_diff
 
 S0 = const(0)     # Idle task. Wait for go command
-S1 = const(1)     # Run from point 0-1 (line follow with diverge)
-S2 = const(2)     # Run from point 1-2 (line follow with 180 curve)
-S3 = const(3)     # Run from point 2-3 (line follow with intermittent line)
-S4 = const(4)     # Run from point 3-4 (line follow on "square wave")
-S5 = const(5)     # Run from point 4-5 (parking garage)
-
-S6 = const(6)     # Line follow from near wall to cross. Move center to cross
-S7 = const(7)     # Turn left until line found and centroid ~0
-S8 = const(8)
-S9 = const(9)
+S1 = const(1)     # Line follow with aggressive accel/decel
+S2 = const(2)     
+S3 = const(3)     # Line follow with feed-forward until line not detected
+S4 = const(4)     # Continue velocity until Romi center at edge of parking garage (est.)
+S5 = const(5)     # Blind radius CW for X distance until facing wall (est.)
+S6 = const(6)     # Move forward until ultrasonic distance within threshold
+S7 = const(7)     # Reverse (if needed) then rotate CCW until line found (and centroid ~= 0?)
+S8 = const(8)     # Line follow until cross reached
+S9 = const(9)     # Continue moving forward unti center aligned with cross
+S10 = const(10)   # Turn CCW until line found
+S11 = const(11)   # Move forward for X distance to move cup then reverse
+S12 = const(12)   # Turn CW until line found
+S13 = const(13)   # (might be unnecessary) Move forward until right corner hit
+S14 = const(14)   # Line follow slalom. Retune Ki Kp for best consistency
+S15 = const(15)   # Feed-forward line follow for X distance (R150)
+S16 = const(16)   # Standard line follow for 50mm
+S17 = const(17)   # Feed-forward line follow for X distance (R200)
+S18 = const(18)   # Standard line follow for X distance
+S19 = const(19)   # Perform preprogrammed cup push routine (CCW segment)
+S20 = const(20)   # Perform preprogrammed cup push routine (CW segment)
+S21 = const(21)   # Line follow for x distance
+S22 = const(22)   # Blind radius for X distance
+S23 = const(23)   # Enable line detection (once sensor is definitley only over right line)
+                  # until line no longer found
+S24 = const(24)   # (might be unnecessary) Move forward until dot found
+S25 = const(25)   # Move forward to compensate for center-IR array offset
 
 ACCELERATION = 500  # Acceleration in mm/s^2
 
@@ -22,6 +38,9 @@ LEG_1_DECEL_DIST = 1000
 LEG_1_START_VEL = 100
 LEG_1_MAX_VEL = 500
 LEG_1_END_VEL = 100
+
+GARAGE_INSIDE_SPEED = 20.56
+GARAGE_OUTSIDE_SPEED = 70.34
 
 ROMI_LINE_OFFSET = 75 # Distance from Romi's center to line array
 
@@ -41,7 +60,8 @@ class task_competition:
             leftMotorGo:             Share,
             leftMotorSetPoint:       Share,
             rightMotorGo:            Share,
-            rightMotorSetPoint:      Share
+            rightMotorSetPoint:      Share,
+            ultrasonicDistance:      Share,
         ):
         
         self._goFlag = competitionGo
@@ -57,6 +77,7 @@ class task_competition:
         self._leftMotorSetPoint = leftMotorSetPoint
         self._rightMotorGo = rightMotorGo
         self._rightMotorSetPoint = rightMotorSetPoint
+        self._ultrasonicDistance = ultrasonicDistance
 
         self._state = S0
 
@@ -79,6 +100,7 @@ class task_competition:
                 self._reflectanceMode.put(0)
                 self._state = 0
 
+            # Wait for go flag
             if self._state == S0:
                 if self._goFlag.get():
                     # Set initial configuration
@@ -87,22 +109,24 @@ class task_competition:
                     self._reflectanceMode.put(3)
                     self._velocity = LEG_1_START_VEL
 
-                    self._lineFollowSetPoint.put(50)
-                    # self._leftMotorSetPoint.put(50)
-                    # self._rightMotorSetPoint.put(50)
-                    # self._lineFollowSetPoint.put(self._velocity)
-                    # self._leftMotorSetPoint.put(LEG_1_START_VEL)
-                    # self._rightMotorSetPoint.put(LEG_1_START_VEL)
+                    # self._lineFollowSetPoint.put(50)
+                    # self._observerGoFlag.put(1)
+                    # self._leftMotorGo.put(1)
+                    # self._rightMotorGo.put(1)
+                    # self._lineFollowGo.put(1)
+                    # self._lineFollowKff.put(0)
+                    # self._state = S1
 
-                    self._observerGoFlag.put(1)
-                    self._leftMotorGo.put(1)
-                    self._rightMotorGo.put(1)
                     self._lineFollowGo.put(1)
-                    self._lineFollowKff.put(0)
+                    self._rightMotorGo.put(1)
+                    self._leftMotorGo.put(1)
+                    self._lineFollowSetPoint.put(LEG_1_END_VEL)
+                    self._lineFollowKff.put(LEG_2_KFF)
+                    self._leftMotorSpeedAvg = self._leftMotorSetPoint.get()
+                    self._rightMotorSpeedAvg = self._rightMotorSetPoint.get()
+                    self._state = S3 # PUT BACK WHEN DONE TESTING
 
-                    self._state = S1
-                    # self._state = S5 # PUT BACK WHEN DONE TESTING
-
+            # Accelerate to top speed then decelerate before short radius
             elif self._state == S1:
                 if not self._goFlag.get():
                     self._state = S0
@@ -135,6 +159,10 @@ class task_competition:
                     self._state = S2
 
             elif self._state == S2:
+                self._state = S3
+
+            # Follow short radius until line is no longer detected
+            elif self._state == S3:
                 # Continue to measure avg left/right velocities during radius
                 self._leftMotorSpeedAvg += self._leftMotorSetPoint.get()
                 self._leftMotorSpeedAvg /= 2
@@ -144,48 +172,75 @@ class task_competition:
                 if not self._lineFound.get():
                     self._lineFollowGo.put(0)
                     self._lineFollowKff.put(0)
-                    yield
                     self._leftMotorSetPoint.put(self._leftMotorSpeedAvg)
                     self._rightMotorSetPoint.put(self._rightMotorSpeedAvg)
-                    self._state = S3
+                    self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
+                    self._state = S4
 
-            elif self._state == S3:
+            # Continue moving at same radius rate until center of romi is predicted
+            # to be at the entrace edge of the parking garage
+            elif self._state == S4:
                 # Enforce motors run at avg radius speed
                 self._leftMotorSetPoint.put(self._leftMotorSpeedAvg)
                 self._rightMotorSetPoint.put(self._rightMotorSpeedAvg)
 
                 segment_distance = self._observerCenterDistance.get() - self._centerStartDist
-                if (segment_distance) >= 314.1:
-                    self._goFlag.put(0)
-                    self._state = S4
-
-            elif self._state == S4:
-                self._goFlag.put(0) # Ack that competition is done
-                self._state = S0
+                # if (segment_distance) >= 314.1:
+                if (segment_distance) >= 50:
+                    # self._goFlag.put(0)
+                    self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
+                    self._lineFollowGo.put(0)
+                    self._lineFollowKff.put(0)
+                    # Set velocities for given radius
+                    self._rightMotorSetPoint.put(GARAGE_INSIDE_SPEED)
+                    self._leftMotorSetPoint.put(GARAGE_OUTSIDE_SPEED)
+                    self._state = S5
 
             elif self._state == S5:
-                self._lineFollowGo.put(1)
-                self._lineFollowSetPoint.put(50)
-                self._leftMotorSetPoint.put(50)
-                self._rightMotorSetPoint.put(50)
-                self._lineFollowKff.put(0)
-                self._state = S6
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= 215:
+                    self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
+                    self._leftMotorSetPoint.put(75)
+                    self._rightMotorSetPoint.put(75)
+                    self._lineFollowKff.put(0)
+                    self._state = S6
 
             elif self._state == S6:
+                # if (self._observerCenterDistance.get() - self._centerStartDist) >= 375:
+                if self._ultrasonicDistance.get() < 10:
+                    self._leftMotorSetPoint.put(0)
+                    self._rightMotorSetPoint.put(0)
+                    self._state = S7
+            
+            # Resume line following (after redetection inside parking garage)
+            elif self._state == S7:
+                self._goFlag.put(0)
+                self._state = S0
+                # self._state = S8
+
+            # Line follow until line (not found) / (weight > threshold)
+            # TODO: need to find reliable way to detect when cross is reached. 
+            elif self._state == S8:
                 # if not self._lineFound.get():
                 #     self._centerStartDist = self._observerCenterDistance.get()
                 #     # self._state = S7
                 #     self._state = S8
                 self._centerStartDist = self._observerCenterDistance.get()
-                self._state = S7
+                self._state = S9
             
-            elif self._state == S7:
+            # Move forward until romi centered at cross
+            elif self._state == S9:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= ROMI_LINE_OFFSET:
-                    self._state = S8
+                    self._state = S10
             
-            elif self._state == S8:
+            # Rotate CCW in place until line is picked up
+            elif self._state == S10:
                 self._goFlag.put(0)
-                self._state = S0
+                self._state = S11
+                pass
+
+            # Follow line until not found towards cup
+            # TODO: need to measure how far away cup is?
+            elif self._state == S11:
                 pass
             
 
