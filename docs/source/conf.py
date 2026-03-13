@@ -4,6 +4,8 @@ release = '1.0'
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.apidoc',
     'sphinx.ext.viewcode',
     'myst_parser',
     'sphinx_autodoc_typehints',
@@ -37,6 +39,14 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
 html_static_path = ['_static']
+html_title = project
+
+autosummary_generate = True
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,
+}
 
 # Source file extensions
 source_suffix = {
@@ -49,3 +59,20 @@ import sys, os
 sys.path.insert(0, os.path.abspath('../..'))          # project root (main.py, task_*.py, etc.)
 sys.path.insert(0, os.path.abspath('../../drivers'))  # drivers/ package
 sys.path.insert(0, os.path.abspath('../../desktop'))  # desktop/ tools
+
+# Run apidoc during sphinx-build (replaces separate Makefile apidoc step)
+_project_root = os.path.abspath('../..')
+apidoc_modules = [
+    {
+        'path': _project_root,
+        'destination': 'api/generated',
+        'exclude_patterns': [
+            os.path.join(_project_root, '.venv'),
+            os.path.join(_project_root, 'docs'),
+            os.path.join(_project_root, '__pycache__'),
+            os.path.join(_project_root, 'main.py'),
+        ],
+        'separate_modules': True,
+        'module_first': True,
+    },
+]

@@ -6,7 +6,7 @@
 
 ---
 
-Mecha15 is an autonomous line-following robot built on the Pololu Romi chassis.
+Roami is an autonomous line-following robot built on the Pololu Romi chassis.
 It uses a 7-element IR reflectance array, a BNO055 IMU, quadrature encoders,
 and a model-based state observer to navigate a competition course at speed.
 
@@ -16,15 +16,18 @@ and a model-based state observer to navigate a competition course at speed.
 :maxdepth: 2
 :caption: Report
 
-overview
-hardware
-software
-results
+template
 ```
 
 ```{toctree}
 :maxdepth: 2
-:caption: API Reference
+:caption: Files
 
-api
+api/generated/modules
+```
+
+```{toctree}
+:caption: Links
+
+GitHub <https://github.com/spring-2026-mecha15/Lab-0x05>
 ```
