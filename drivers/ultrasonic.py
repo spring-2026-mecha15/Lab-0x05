@@ -1,6 +1,6 @@
 # DIYables_MicroPython_Ultrasonic_Sensor.py
 
-from machine import Pin
+from pyb import Pin
 import utime
 import gc
 
