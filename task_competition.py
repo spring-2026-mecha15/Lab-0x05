@@ -46,6 +46,44 @@ ROMI_LINE_OFFSET = 75 # Distance from Romi's center to line array
 
 LEG_2_KFF = 0.6 # Feed forward gain for 200mm radius during leg 2
 
+ROTATE_SPEED       = 75     # Wheel speed for in-place rotation (mm/s)
+LINE_FOLLOW_SPEED  = 100    # Nominal line-follow speed for interior segments (mm/s)
+
+S7_REVERSE_DIST    = 50     # Distance to reverse in S7 before rotating (mm)
+S8_CROSS_DIST      = 200    # TBD: LF distance before cross detected in S8 (mm)
+
+S11_CUP_PUSH_DIST  = 450    # Distance to drive forward to push cup (mm)
+S11_REVERSE_DIST   = 450    # Distance to reverse after cup push (mm)
+
+S13_FORWARD_DIST   = 75     # TBD: short LF distance to clear right corner in S13 (mm)
+S14_DIST           = 800    # TBD: slalom LF distance before transitioning to S15 (mm)
+
+S15_DIST           = 400    # TBD: R150 feed-forward arc distance (mm)
+S15_KFF            = 0.4    # TBD: Kff for R150 arc
+
+S16_DIST           = 50     # Standard LF distance in S16 (mm)
+
+S17_DIST           = 500    # TBD: R200 feed-forward arc distance (mm)
+S17_KFF            = 0.3    # TBD: Kff for R200 arc
+
+S18_DIST           = 800    # TBD: straight LF distance before cup push loop (mm)
+
+S19_DIST           = 400    # TBD: CCW cup push loop segment distance (mm)
+S20_DIST           = 400    # TBD: CW  cup push loop segment distance (mm)
+
+S21_DIST           = 400    # TBD: LF distance from cup loop toward blind corner (mm)
+
+S22_INSIDE_SPEED   = 20.56  # TBD: inside  wheel speed for blind radius to CP#4 (mm/s)
+S22_OUTSIDE_SPEED  = 70.34  # TBD: outside wheel speed for blind radius to CP#4 (mm/s)
+S22_DIST           = 300    # TBD: blind radius travel distance (mm)
+
+S25_OFFSET_DIST    = 75     # Forward offset to center Romi over CP#5 (mm)
+
+def wheel_speeds(radius_mm, center_speed_mms, half_track=70.5):
+    """Return (v_left, v_right) in mm/s. Positive radius = right turn."""
+    return (center_speed_mms * (radius_mm + half_track) / radius_mm,
+            center_speed_mms * (radius_mm - half_track) / radius_mm)
+
 class task_competition:
     def __init__(self,
             competitionGo:           Share,
@@ -89,6 +127,9 @@ class task_competition:
         self._rightMotorSpeedAvg = 0.0
 
         self._velocity = 0
+
+        self._s7_phase  = 0   # Sub-state for S7  (0=init, 1=reversing, 2=rotating)
+        self._s11_phase = 0   # Sub-state for S11 (0=forward cup push, 1=reversing)
 
     def run(self):
         while True:
@@ -172,8 +213,11 @@ class task_competition:
                 if not self._lineFound.get():
                     self._lineFollowGo.put(0)
                     self._lineFollowKff.put(0)
-                    self._leftMotorSetPoint.put(self._leftMotorSpeedAvg)
-                    self._rightMotorSetPoint.put(self._rightMotorSpeedAvg)
+                    # self._leftMotorSetPoint.put(self._leftMotorSpeedAvg)
+                    # self._rightMotorSetPoint.put(self._rightMotorSpeedAvg)
+                    left_speed, right_speed = wheel_speeds(200, 50)
+                    self._leftMotorSetPoint.put(left_speed)
+                    self._rightMotorSetPoint.put(right_speed)
                     self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
                     self._state = S4
 
@@ -192,8 +236,11 @@ class task_competition:
                     self._lineFollowGo.put(0)
                     self._lineFollowKff.put(0)
                     # Set velocities for given radius
-                    self._rightMotorSetPoint.put(GARAGE_INSIDE_SPEED)
-                    self._leftMotorSetPoint.put(GARAGE_OUTSIDE_SPEED)
+                    # self._rightMotorSetPoint.put(GARAGE_INSIDE_SPEED)
+                    # self._leftMotorSetPoint.put(GARAGE_OUTSIDE_SPEED)
+                    left_speed, right_speed = wheel_speeds(125, 50)
+                    self._leftMotorSetPoint.put(left_speed)
+                    self._rightMotorSetPoint.put(right_speed)
                     self._state = S5
 
             elif self._state == S5:
@@ -211,37 +258,181 @@ class task_competition:
                     self._rightMotorSetPoint.put(0)
                     self._state = S7
             
-            # Resume line following (after redetection inside parking garage)
+            # --- S7: reverse ~50 mm inside garage, then rotate CCW until line found ---
             elif self._state == S7:
-                self._goFlag.put(0)
-                self._state = S0
-                # self._state = S8
+                if self._s7_phase == 0:
+                    # Phase 0: initialise reverse
+                    self._lineFollowGo.put(0)
+                    self._leftMotorSetPoint.put(-ROTATE_SPEED)
+                    self._rightMotorSetPoint.put(-ROTATE_SPEED)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._s7_phase = 1
 
-            # Line follow until line (not found) / (weight > threshold)
-            # TODO: need to find reliable way to detect when cross is reached. 
+                elif self._s7_phase == 1:
+                    # Phase 1: continue reversing until S7_REVERSE_DIST covered
+                    if (self._centerStartDist - self._observerCenterDistance.get()) >= S7_REVERSE_DIST:
+                        # Begin CCW rotation: left wheel backward, right wheel forward
+                        self._leftMotorSetPoint.put(-ROTATE_SPEED)
+                        self._rightMotorSetPoint.put(ROTATE_SPEED)
+                        self._s7_phase = 2
+
+                elif self._s7_phase == 2:
+                    # Phase 2: rotate CCW until line is re-acquired
+                    if self._lineFound.get():
+                        self._s7_phase = 0
+                        self._centerStartDist = self._observerCenterDistance.get()
+                        self._lineFollowSetPoint.put(LINE_FOLLOW_SPEED)
+                        self._lineFollowGo.put(1)
+                        self._state = S8
+
+            # --- S8: line follow until reaching the cross (~S8_CROSS_DIST) ---
             elif self._state == S8:
-                # if not self._lineFound.get():
-                #     self._centerStartDist = self._observerCenterDistance.get()
-                #     # self._state = S7
-                #     self._state = S8
-                self._centerStartDist = self._observerCenterDistance.get()
-                self._state = S9
-            
-            # Move forward until romi centered at cross
+                segment_distance = self._observerCenterDistance.get() - self._centerStartDist
+                if segment_distance >= S8_CROSS_DIST:
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S9
+
+            # --- S9: creep forward ROMI_LINE_OFFSET to centre Romi over cross ---
             elif self._state == S9:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= ROMI_LINE_OFFSET:
+                    # Stop line follower; begin CCW rotation toward cup line
+                    self._lineFollowGo.put(0)
+                    self._leftMotorSetPoint.put(-ROTATE_SPEED)
+                    self._rightMotorSetPoint.put(ROTATE_SPEED)
                     self._state = S10
-            
-            # Rotate CCW in place until line is picked up
-            elif self._state == S10:
-                self._goFlag.put(0)
-                self._state = S11
-                pass
 
-            # Follow line until not found towards cup
-            # TODO: need to measure how far away cup is?
+            # --- S10: rotate CCW in place until line found ---
+            elif self._state == S10:
+                if self._lineFound.get():
+                    self._lineFollowSetPoint.put(LINE_FOLLOW_SPEED)
+                    self._lineFollowGo.put(1)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._s11_phase = 0
+                    self._state = S11
+
+            # --- S11: line-follow forward 450 mm to push cup, then reverse 450 mm ---
             elif self._state == S11:
-                pass
-            
+                if self._s11_phase == 0:
+                    # Phase 0: line follow forward until cup push distance
+                    if (self._observerCenterDistance.get() - self._centerStartDist) >= S11_CUP_PUSH_DIST:
+                        self._lineFollowGo.put(0)
+                        self._leftMotorSetPoint.put(-ROTATE_SPEED)
+                        self._rightMotorSetPoint.put(-ROTATE_SPEED)
+                        self._centerStartDist = self._observerCenterDistance.get()
+                        self._s11_phase = 1
+
+                elif self._s11_phase == 1:
+                    # Phase 1: reverse until S11_REVERSE_DIST covered
+                    if (self._centerStartDist - self._observerCenterDistance.get()) >= S11_REVERSE_DIST:
+                        # Begin CW rotation: left forward, right backward
+                        self._leftMotorSetPoint.put(ROTATE_SPEED)
+                        self._rightMotorSetPoint.put(-ROTATE_SPEED)
+                        self._s11_phase = 0
+                        self._state = S12
+
+            # --- S12: rotate CW in place until line found ---
+            elif self._state == S12:
+                if self._lineFound.get():
+                    self._lineFollowSetPoint.put(LINE_FOLLOW_SPEED)
+                    self._lineFollowGo.put(1)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S13
+
+            # --- S13: short line-follow to clear right corner ---
+            elif self._state == S13:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S13_FORWARD_DIST:
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S14
+
+            # --- S14: steady slalom line follow ---
+            elif self._state == S14:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S14_DIST:
+                    self._lineFollowKff.put(S15_KFF)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S15
+
+            # --- S15: feed-forward line follow for R150 arc ---
+            elif self._state == S15:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S15_DIST:
+                    self._lineFollowKff.put(0)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S16
+
+            # --- S16: standard line follow for 50 mm (Kff = 0) ---
+            elif self._state == S16:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S16_DIST:
+                    self._lineFollowKff.put(S17_KFF)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S17
+
+            # --- S17: feed-forward line follow for R200 arc ---
+            elif self._state == S17:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S17_DIST:
+                    self._lineFollowKff.put(0)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S18
+
+            # --- S18: straight line follow into cup push loop ---
+            elif self._state == S18:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S18_DIST:
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S19
+
+            # --- S19: pre-programmed cup push loop, CCW arc segment ---
+            elif self._state == S19:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S19_DIST:
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S20
+
+            # --- S20: pre-programmed cup push loop, CW arc segment ---
+            elif self._state == S20:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S20_DIST:
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S21
+
+            # --- S21: line follow from cup loop toward blind corner ---
+            elif self._state == S21:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S21_DIST:
+                    self._lineFollowGo.put(0)
+                    self._leftMotorSetPoint.put(S22_OUTSIDE_SPEED)
+                    self._rightMotorSetPoint.put(S22_INSIDE_SPEED)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S22
+
+            # --- S22: blind radius toward CP#4 return track ---
+            elif self._state == S22:
+                self._leftMotorSetPoint.put(S22_OUTSIDE_SPEED)
+                self._rightMotorSetPoint.put(S22_INSIDE_SPEED)
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S22_DIST:
+                    self._lineFollowSetPoint.put(LINE_FOLLOW_SPEED)
+                    self._lineFollowGo.put(1)
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._state = S23
+
+            # --- S23: line follow (right-side return track) until line lost ---
+            elif self._state == S23:
+                if not self._lineFound.get():
+                    self._lineFollowGo.put(0)
+                    self._leftMotorSetPoint.put(LINE_FOLLOW_SPEED)
+                    self._rightMotorSetPoint.put(LINE_FOLLOW_SPEED)
+                    self._state = S24
+
+            # --- S24: drive forward until dot (line) re-detected ---
+            elif self._state == S24:
+                if self._lineFound.get():
+                    self._centerStartDist = self._observerCenterDistance.get()
+                    self._leftMotorSetPoint.put(0)
+                    self._rightMotorSetPoint.put(0)
+                    self._state = S25
+
+            # --- S25: creep forward S25_OFFSET_DIST to centre Romi over CP#5 ---
+            elif self._state == S25:
+                self._leftMotorSetPoint.put(LINE_FOLLOW_SPEED)
+                self._rightMotorSetPoint.put(LINE_FOLLOW_SPEED)
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S25_OFFSET_DIST:
+                    self._leftMotorSetPoint.put(0)
+                    self._rightMotorSetPoint.put(0)
+                    self._goFlag.put(0)
+                    self._state = S0
 
             yield
