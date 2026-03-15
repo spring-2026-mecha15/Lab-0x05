@@ -40,7 +40,7 @@ class task_line_follow:
         self._leftMotorSetPoint   = leftMotorSetPoint
 
         self._controller = PIController(        # Instantiate a PI controller to affect Romi spin
-            self.plant_cb,                      # as the line centroid drifts from center.
+            self._plant_cb,                      # as the line centroid drifts from center.
             141,                                # Velocity at wheels = W*Omega, where W is wheel width (141mm)
             self._lineCentroid.get,
             1,
@@ -101,7 +101,7 @@ class task_line_follow:
         return True
 
     def run(self):
-        # Track previous goflag state to determine when flag was just set
+        """Track previous goflag state to determine when flag was just set"""
         while True:
             if self._state == 0:
                 if self._goFlag.get():
@@ -134,7 +134,6 @@ class task_line_follow:
 
             yield self._state
 
-    def plant_cb(self, value):
-        # print(f'{self._count} - Plant rx value: {value:.3f}')
+    def _plant_cb(self, value):
         self._leftMotorSetPoint.put(self._nominalSetPoint + value)
         self._rightMotorSetPoint.put(self._nominalSetPoint - value)

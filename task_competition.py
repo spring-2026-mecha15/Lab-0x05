@@ -1,6 +1,7 @@
 from micropython import const
 from task_share import Share
-from time import ticks_ms, ticks_diff
+from utime import ticks_ms, ticks_diff
+import gc
 
 S0 = const(0)     # Idle task. Wait for go command
 S1 = const(1)     # Line follow with aggressive accel/decel
@@ -50,7 +51,7 @@ ROTATE_SPEED       = 75     # Wheel speed for in-place rotation (mm/s)
 LINE_FOLLOW_SPEED  = 100    # Nominal line-follow speed for interior segments (mm/s)
 
 S7_REVERSE_DIST    = 50     # Distance to reverse in S7 before rotating (mm)
-S8_CROSS_DIST      = 200    # TBD: LF distance before cross detected in S8 (mm)
+S8_CROSS_DIST      = 100    # TBD: LF distance before cross detected in S8 (mm)
 
 S11_CUP_PUSH_DIST  = 450    # Distance to drive forward to push cup (mm)
 S11_REVERSE_DIST   = 450    # Distance to reverse after cup push (mm)
@@ -130,6 +131,7 @@ class task_competition:
 
         self._s7_phase  = 0   # Sub-state for S7  (0=init, 1=reversing, 2=rotating)
         self._s11_phase = 0   # Sub-state for S11 (0=forward cup push, 1=reversing)
+        self._s9_phase = 0
 
     def run(self):
         while True:
@@ -253,7 +255,7 @@ class task_competition:
 
             elif self._state == S6:
                 # if (self._observerCenterDistance.get() - self._centerStartDist) >= 375:
-                if self._ultrasonicDistance.get() < 10:
+                if self._ultrasonicDistance.get() < 5:
                     self._leftMotorSetPoint.put(0)
                     self._rightMotorSetPoint.put(0)
                     self._state = S7
@@ -264,19 +266,11 @@ class task_competition:
                     # Phase 0: initialise reverse
                     self._lineFollowGo.put(0)
                     self._leftMotorSetPoint.put(-ROTATE_SPEED)
-                    self._rightMotorSetPoint.put(-ROTATE_SPEED)
+                    self._rightMotorSetPoint.put(ROTATE_SPEED)
                     self._centerStartDist = self._observerCenterDistance.get()
                     self._s7_phase = 1
 
                 elif self._s7_phase == 1:
-                    # Phase 1: continue reversing until S7_REVERSE_DIST covered
-                    if (self._centerStartDist - self._observerCenterDistance.get()) >= S7_REVERSE_DIST:
-                        # Begin CCW rotation: left wheel backward, right wheel forward
-                        self._leftMotorSetPoint.put(-ROTATE_SPEED)
-                        self._rightMotorSetPoint.put(ROTATE_SPEED)
-                        self._s7_phase = 2
-
-                elif self._s7_phase == 2:
                     # Phase 2: rotate CCW until line is re-acquired
                     if self._lineFound.get():
                         self._s7_phase = 0
@@ -289,8 +283,8 @@ class task_competition:
             elif self._state == S8:
                 segment_distance = self._observerCenterDistance.get() - self._centerStartDist
                 if segment_distance >= S8_CROSS_DIST:
-                    self._centerStartDist = self._observerCenterDistance.get()
-                    self._state = S9
+                    if not self._lineFound.get():
+                        self._state = S9
 
             # --- S9: creep forward ROMI_LINE_OFFSET to centre Romi over cross ---
             elif self._state == S9:
@@ -299,7 +293,12 @@ class task_competition:
                     self._lineFollowGo.put(0)
                     self._leftMotorSetPoint.put(-ROTATE_SPEED)
                     self._rightMotorSetPoint.put(ROTATE_SPEED)
-                    self._state = S10
+
+                    self._s9_phase += 1
+
+                    if self._s9_phase > 25:
+                        self._s9_phase = 0
+                        self._state = S10
 
             # --- S10: rotate CCW in place until line found ---
             elif self._state == S10:
@@ -312,6 +311,10 @@ class task_competition:
 
             # --- S11: line-follow forward 450 mm to push cup, then reverse 450 mm ---
             elif self._state == S11:
+                if not self._lineFound.get():
+                    self._lineFollowGo.put(0)
+                    self._leftMotorSetPoint.put(ROTATE_SPEED)
+                    self._rightMotorSetPoint.put(ROTATE_SPEED)
                 if self._s11_phase == 0:
                     # Phase 0: line follow forward until cup push distance
                     if (self._observerCenterDistance.get() - self._centerStartDist) >= S11_CUP_PUSH_DIST:
@@ -436,3 +439,5 @@ class task_competition:
                     self._state = S0
 
             yield
+
+gc.collect()

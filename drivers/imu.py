@@ -1,12 +1,12 @@
 from micropython import const
 from pyb import I2C
-import time
+import utime
 import math
 
 
 def cooperative_delay_ms(delay_ms, state=0):
-    deadline = time.ticks_add(time.ticks_ms(), int(delay_ms))
-    while time.ticks_diff(deadline, time.ticks_ms()) > 0:
+    deadline = utime.ticks_add(utime.ticks_ms(), int(delay_ms))
+    while utime.ticks_diff(deadline, utime.ticks_ms()) > 0:
         yield state
 
 

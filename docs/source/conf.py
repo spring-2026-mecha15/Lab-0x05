@@ -21,7 +21,10 @@ autodoc_mock_imports = [
 
 # MicroPython adds ticks_us/ticks_ms/ticks_diff to the built-in `time` module.
 # Patch them here so encoder.py and task_competition.py can be imported by autodoc.
-import time as _time
+try:
+    import utime as _time
+except ImportError:
+    import time as _time
 if not hasattr(_time, 'ticks_us'):
     _time.ticks_us   = lambda: 0
 if not hasattr(_time, 'ticks_ms'):

@@ -1,9 +1,10 @@
-# Main control loop for dual-motor closed-loop control system.
+"""
+Main control loop for dual-motor closed-loop control system.
 
-# This module initializes hardware drivers, communication channels, and tasks
-# for controlling two motors with encoders. It runs a real-time scheduler
-# that coordinates motor control and user interface tasks.
-
+This module initializes hardware drivers, communication channels, and tasks
+for controlling two motors with encoders. It runs a real-time scheduler
+that coordinates motor control and user interface tasks.
+"""
 
 # ============================================================================
 # IMPORTS
@@ -19,6 +20,8 @@ gc.collect()
 print(f"Mem free: {gc.mem_free()}")
 print("Loading Task User")
 from task_user import task_user
+gc.collect()
+from task_competition import task_competition
 gc.collect()
 print(f"Mem free: {gc.mem_free()}")
 
@@ -43,11 +46,13 @@ print("Loading other tasks")
 from task_motor import task_motor
 gc.collect()
 from task_line_follow import task_line_follow
+gc.collect()
 from task_reflectance import task_reflectance
+gc.collect()
 from task_imu import task_imu
+gc.collect()
 from task_observer import task_observer
 gc.collect()
-from task_competition import task_competition
 from task_ultrasonic import task_ultrasonic
 gc.collect()
 print(f"Mem free: {gc.mem_free()}")
@@ -101,6 +106,7 @@ ultrasonicSensor = UltrasonicSensor(PIN_TRIG, PIN_ECHO)
 
 
 
+gc.collect()
 # ============================================================================
 # INTER-TASK COMMUNICATION SETUP
 # ============================================================================
@@ -180,6 +186,7 @@ competitionGo          = Share("B", name="Competition go flag")
 
 ultrasonicDistance     = Share("f", name="Ultrasonic Sensor")
 
+gc.collect()
 # ============================================================================
 # TASK INSTANTIATION
 # ============================================================================
@@ -189,11 +196,13 @@ leftMotorTask = task_motor(
     leftMotor, leftEncoder,
     leftMotorGo, leftMotorKp, leftMotorKi, leftMotorSetPoint,
     dataValues, timeValues, wheelDistLeft, motorVoltageLeft, motorOmegaLeft)
+gc.collect()
 
 rightMotorTask = task_motor(
     rightMotor, rightEncoder,
     rightMotorGo, rightMotorKp, rightMotorKi, rightMotorSetPoint,
     dataValues, timeValues, wheelDistRight, motorVoltageRight, motorOmegaRight)
+gc.collect()
 
 # Create a line follower control instance
 lineFollowTask = task_line_follow(
@@ -206,6 +215,7 @@ lineFollowTask = task_line_follow(
     rightMotorSetPoint,
     leftMotorSetPoint
 )
+gc.collect()
 
 # Create a reflectance sensor array instance
 reflectanceTask = task_reflectance(
@@ -216,12 +226,14 @@ reflectanceTask = task_reflectance(
     centroidValues,
     centroidTimeValues
 )
+gc.collect()
 
 # Create an IMU sensor instance
 imuTask = task_imu(
     imuSensor, imuMode, imuCalibration,
     imuHeading, imuHeadingRate
 )
+gc.collect()
 
 # Create an Observer instance
 observerTask = task_observer(
@@ -240,6 +252,7 @@ observerTask = task_observer(
     observerDistanceLeft,
     observerDistanceRight
 )
+gc.collect()
 
 # Create user interface task for parameter adjustment and data collection
 userTask = task_user(
@@ -260,6 +273,7 @@ userTask = task_user(
     competitionGo,
     ultrasonicDistance
     )
+gc.collect()
 
 competitionTask = task_competition(
     competitionGo,
@@ -277,11 +291,23 @@ competitionTask = task_competition(
     rightMotorSetPoint,
     ultrasonicDistance
 )
+gc.collect()
 
 ultrasonicTask = task_ultrasonic(
     ultrasonicSensor,
     ultrasonicDistance
 )
+gc.collect()
+
+class RomiGarbage:
+    def run(self):
+        while True:
+            # startmem = gc.mem_free()
+            gc.collect()
+            # print(f'gc: {gc.mem_free() - startmem}')
+            yield
+rg = RomiGarbage()
+gc.collect()
 
 
 
@@ -309,15 +335,6 @@ task_list.append(Task(observerTask.run, name="Observer Task", # MUST have 20ms p
                       priority=8, period=20, profile=True))
 task_list.append(Task(competitionTask.run, name="Competition Task",
                       priority=9, period=50, profile=False))
-
-class RomiGarbage:
-    def run(self):
-        while True:
-            # startmem = gc.mem_free()
-            gc.collect()
-            # print(f'gc: {gc.mem_free() - startmem}')
-            yield
-rg = RomiGarbage()
 
 task_list.append(Task(rg.run, name="Garbage collection",
                       priority=0, period=100, profile=True))

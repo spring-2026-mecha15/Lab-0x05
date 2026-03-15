@@ -124,10 +124,6 @@ class task_motor:
         return True
         
     def run(self):
-        '''
-        Runs one iteration of the task
-        '''
-        
         while True:
             
             if self._state == S0_INIT: # Init state (can be removed if unneeded)

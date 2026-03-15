@@ -1,8 +1,8 @@
 # DIYables_MicroPython_Ultrasonic_Sensor.py
 
 from machine import Pin
-import time
 import utime
+import gc
 
 class UltrasonicSensor:
     def __init__(self, trig_pin, echo_pin):
@@ -17,11 +17,11 @@ class UltrasonicSensor:
         """Perform a measurement cycle and update the list of distances."""
         # Ensure the trigger pin is low for a clean pulse
         self.trig.value(0)
-        time.sleep_us(5)
+        utime.sleep_us(5)
         
         # Send a 10 microsecond pulse to start the measurement
         self.trig.value(1)
-        time.sleep_us(10)
+        utime.sleep_us(10)
         self.trig.value(0)
         
         start_time = utime.ticks_us()
@@ -95,3 +95,6 @@ class UltrasonicSensor:
         """Disable filtering of measurements and reset number of samples to 1."""
         self.filter_enabled = False
         self.num_samples = 1  # Reset to default sample count
+
+
+gc.collect()

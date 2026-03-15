@@ -1,16 +1,19 @@
 from utime import ticks_us, ticks_diff
+import gc
 
 
 class PIController:
-    # Generic PI (Proportional + Integral) controller for MicroPython.
+    """
+    Generic PI (Proportional + Integral) controller for MicroPython.
 
-    # Each `run()` call:
-    #     1) reads sensor
-    #     2) computes error and dt
-    #     3) updates integral (with anti-windup)
-    #     4) computes PI output
-    #     5) clamps to saturation
-    #     6) sends to actuator
+    Each `run()` call:
+        1) reads sensor
+        2) computes error and dt
+        3) updates integral (with anti-windup)
+        4) computes PI output
+        5) clamps to saturation
+        6) sends to actuator
+    """
     
 
     def __init__(
@@ -55,7 +58,7 @@ class PIController:
         return self._Kp
 
     @Kp.setter
-    def Kp(self, value: float) -> None:
+    def Kp(self, value: float):
         self._Kp = value
 
     @property
@@ -63,7 +66,7 @@ class PIController:
         return self._Ki
 
     @Ki.setter
-    def Ki(self, value: float) -> None:
+    def Ki(self, value: float):
         self._Ki = value
 
     @property
@@ -71,29 +74,33 @@ class PIController:
         return self._setpoint
 
     @set_point.setter
-    def set_point(self, value: float) -> None:
+    def set_point(self, value: float):
         self._setpoint = value
 
     def set_feed_forward(self, setpoint: float, gain: float) -> None:
-        # Set feed-forward setpoint and gain.
+        """
+        Set feed-forward setpoint and gain.
 
-        # Feed-forward effort is computed as:
-        #     ff_term = gain * setpoint
-        # and is added to the PI effort before saturation.
+        Feed-forward effort is computed as:
+            ff_term = gain * setpoint
+        and is added to the PI effort before saturation.
+        """
         self._ff_setpoint = setpoint
         self._Kff = gain
 
     # --------------------
     # Control methods
     # --------------------
-    def reset(self) -> None:
-        # Reset integral state and initialize the time reference.
+    def reset(self):
+        """Reset integral state and initialize the time reference."""
         self._i_error = 0.0
         self._last_ticksus = ticks_us()
 
-    def run(self) -> None:
-        # Run one PI update with anti-windup protection.
-        # --- Time delta (wrap-safe) ---
+    def run(self):
+        """
+        Run one PI update with anti-windup protection.
+        --- Time delta (wrap-safe) ---
+        """
         now_us = ticks_us()
         dt_s = ticks_diff(now_us, self._last_ticksus) * 1e-6  # µs -> s
         if dt_s < 0:
@@ -158,3 +165,6 @@ class PIController:
 
         # Optional debug (commented)
         # print("err:", error, "dt:", dt_s, "I:", self._i_error, "out:", effort)
+
+
+gc.collect()

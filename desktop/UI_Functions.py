@@ -12,7 +12,10 @@ Note: This runs on a host computer (CPython) and is not for MicroPython.
 """
 import sys
 import os
-import time
+try:
+    import utime as time
+except ImportError:
+    import time
 import serial
 from serial import SerialException
 from plot import plot_csv

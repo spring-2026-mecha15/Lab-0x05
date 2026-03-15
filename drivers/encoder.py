@@ -1,32 +1,36 @@
 from pyb import Pin, Timer
-from time import ticks_us, ticks_diff   # used for dt calculation in update()
+from utime import ticks_us, ticks_diff   # used for dt calculation in update()
 from constants import *
+import gc
 
 UINT16_MAX = 0xFFFF
 
 class Encoder:
-    # Quadrature encoder interface wrapper.
+    """Quadrature encoder interface wrapper.
 
-    # - Uses a hardware Timer configured in ENC_AB mode with two channels
-    #   (channel 1 -> A, channel 2 -> B).
-    # - Tracks total accumulated encoder position accounting for timer
-    #   reloads (overflow / underflow).
-    # - Provides `update()` to sample the hardware counter and compute:
-    #     - position: total encoder counts (signed, extended across reloads)
-    #     - delta: change in position since last update (counts)
-    #     - dt: elapsed time since last update (milliseconds, float)
-    # - Convenience methods:
-    #     - get_position() -> wheel linear position (mm)
-    #     - get_velocity() -> linear velocity (mm/s)
-    #     - zero() -> reset the encoder zero (tare)
+    - Uses a hardware Timer configured in ENC_AB mode with two channels
+      (channel 1 -> A, channel 2 -> B).
+    - Tracks total accumulated encoder position accounting for timer
+      reloads (overflow / underflow).
+    - Provides `update()` to sample the hardware counter and compute:
+        - position: total encoder counts (signed, extended across reloads)
+        - delta: change in position since last update (counts)
+        - dt: elapsed time since last update (milliseconds, float)
+    - Convenience methods:
+        - get_position() -> wheel linear position (mm)
+        - get_velocity() -> linear velocity (mm/s)
+        - zero() -> reset the encoder zero (tare)
+    """
 
     def __init__(self, tim, chA_pin, chB_pin):
-        # Create and configure timer channels for quadrature decoding.
+        """
+        Create and configure timer channels for quadrature decoding.
 
-        # Parameters (comment-style hints, safe for MicroPython):
-        #   tim     -- pyb.Timer instance already created (Timer(N))
-        #   chA_pin -- pin identifier for channel A (connected to timer CH1)
-        #   chB_pin -- pin identifier for channel B (connected to timer CH2)
+        Parameters (comment-style hints, safe for MicroPython):
+          tim     -- pyb.Timer instance already created (Timer(N))
+          chA_pin -- pin identifier for channel A (connected to timer CH1)
+          chB_pin -- pin identifier for channel B (connected to timer CH2)
+        """
 
 
         # Configure A/B pins as inputs
@@ -56,14 +60,16 @@ class Encoder:
         self.timer_reloads = 0
 
     def _callback(self, timer_obj):
-        # Timer callback invoked on timer reload.
+        """
+        Timer callback invoked on timer reload.
 
-        # The hardware timer invokes this callback when it reloads. We track
-        # whether a reload represented an overflow or an underflow by sampling
-        # the timer counter value and adjusting `self.timer_reloads` accordingly.
+        The hardware timer invokes this callback when it reloads. We track
+        whether a reload represented an overflow or an underflow by sampling
+        the timer counter value and adjusting `self.timer_reloads` accordingly.
 
-        # A try/except is used because, on some builds/hardware, reading the
-        # timer inside the callback has occasionally raised unexpected errors.
+        A try/except is used because, on some builds/hardware, reading the
+        timer inside the callback has occasionally raised unexpected errors.
+        """
         # The original code swallowed those exceptions; we preserve that behavior.
 
         try:
@@ -83,12 +89,14 @@ class Encoder:
             pass
 
     def update(self):
-        # Sample the hardware counter and update position/delta/dt.
+        """
+        Sample the hardware counter and update position/delta/dt.
 
-        # - Reads the raw 16-bit counter
-        # - Extends it using `self.timer_reloads` to build a monotonic `position`
-        # - Computes `delta = position - prev_count`
-        # - Updates `prev_count` and computes elapsed time `dt` (ms)
+        - Reads the raw 16-bit counter
+        - Extends it using `self.timer_reloads` to build a monotonic `position`
+        - Computes `delta = position - prev_count`
+        - Updates `prev_count` and computes elapsed time `dt` (ms)
+        """
         
         # Read raw 16-bit counter (0..65535)
         raw_count = self.timer.counter()
@@ -109,23 +117,27 @@ class Encoder:
         self.prev_ticks = now_us
 
     def get_position(self):
-        # Convert the most recently-updated encoder `position` (counts) into
-        # a linear wheel displacement in millimeters.
+        """
+        Convert the most recently-updated encoder `position` (counts) into
+        a linear wheel displacement in millimeters.
 
-        # Formula:
-        #     rotations = counts / ECOUNTS_PER_WREV
-        #     distance = rotations * (2 * pi * wheel_radius)
+        Formula:
+            rotations = counts / ECOUNTS_PER_WREV
+            distance = rotations * (2 * pi * wheel_radius)
+        """
         
         return (self.position / ECOUNTS_PER_WREV) * 2 * PI * WHEEL_RADIUS
 
     def get_velocity(self):
-        # Compute linear velocity (mm/s) using the most recent `delta` and `dt`.
+        """
+        Compute linear velocity (mm/s) using the most recent `delta` and `dt`.
 
-        # Returns 0 if dt is zero (to avoid division by zero). The computation
-        # follows:
-        #     counts_per_ms = delta / dt
-        #     rotations_per_s = (counts_per_ms * 1000) / ECOUNTS_PER_WREV
-        #     velocity_mm_s = rotations_per_s * (2 * pi * wheel_radius)
+        Returns 0 if dt is zero (to avoid division by zero). The computation
+        follows:
+            counts_per_ms = delta / dt
+            rotations_per_s = (counts_per_ms * 1000) / ECOUNTS_PER_WREV
+            velocity_mm_s = rotations_per_s * (2 * pi * wheel_radius)
+        """
         
         if self.dt == 0:
             return 0
@@ -134,11 +146,13 @@ class Encoder:
         return (ecounts_per_ms * 1e3 / ECOUNTS_PER_WREV) * 2 * PI * WHEEL_RADIUS
 
     def zero(self):
-        # Tare / zero the encoder.
+        """
+        Tare / zero the encoder.
 
-        # - Reset reload counters and prev_count
-        # - Reset the hardware timer counter to 0
-        # - Call update() so subsequent reads are consistent with the new zero
+        - Reset reload counters and prev_count
+        - Reset the hardware timer counter to 0
+        - Call update() so subsequent reads are consistent with the new zero
+        """
         
         self.timer_reloads = 0
         self.prev_count = 0
@@ -149,3 +163,6 @@ class Encoder:
 
         # Refresh derived state so we don't return stale values immediately
         self.update()
+
+
+import gc

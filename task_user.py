@@ -21,7 +21,6 @@ except ImportError:
 
 from pyb import I2C
 from drivers.imu import BNO055, NDOF_OP_MODE
-import time
 import gc
 from utime import ticks_us, ticks_diff
 from drivers.reflectance import Reflectance_Sensor
@@ -929,3 +928,5 @@ class task_user:
 
             # Yield the current state per scheduler convention
             yield self._state
+
+gc.collect()
