@@ -102,8 +102,9 @@ class task_user:
         observerOmegaRight,    # type: Share
         observerDistanceLeft,  # type: Share
         observerDistanceRight, # type: Share
-        competitionGoFlag,     # type: Share 
+        competitionGoFlag,     # type: Share
         ultrasonicDistance,    # type: Share
+        memMonitorGo,          # type: Share
     ):
 
         # State machine
@@ -168,6 +169,8 @@ class task_user:
 
         self._ultrasonicDistance = ultrasonicDistance
 
+        self._memMonitorGo = memMonitorGo
+
         # Battery adc reading
         # self._battAdc = ADC(Pin(BATT_ADC))
 
@@ -225,6 +228,7 @@ class task_user:
                     self._ser.write("| l | Follow Line                                                       |\r\n")
                     self._ser.write("| e | State Estimation                                                  |\r\n")
                     self._ser.write("| i | Misc Debug                                                        |\r\n")
+                    self._ser.write("| m | Toggle memory monitor                                             |\r\n")
                     self._ser.write("+---+-------------------------------------------------------------------+\r\n")
                     self._ser.write("\r\n")
                     self._ser.write(">: ")
@@ -287,6 +291,14 @@ class task_user:
                     elif inChar in {"b", "B"}:
                         self._ser.write(f"{inChar}\r\n")
                         self._state = S9_IMU_MENU
+
+                    # Toggle memory monitor
+                    elif inChar in {"m", "M"}:
+                        self._ser.write(f"{inChar}\r\n")
+                        new_state = 0 if self._memMonitorGo.get() else 1
+                        self._memMonitorGo.put(new_state)
+                        status = "ON" if new_state else "OFF"
+                        self._ser.write(f"Memory monitor: {status}\r\n")
 
                     elif inChar in {"\r", "\n"}:
                         while self._ser.any():

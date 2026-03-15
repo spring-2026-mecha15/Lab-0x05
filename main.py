@@ -1,10 +1,8 @@
-"""
-Main control loop for dual-motor closed-loop control system.
+# Main control loop for dual-motor closed-loop control system.
 
-This module initializes hardware drivers, communication channels, and tasks
-for controlling two motors with encoders. It runs a real-time scheduler
-that coordinates motor control and user interface tasks.
-"""
+# This module initializes hardware drivers, communication channels, and tasks
+# for controlling two motors with encoders. It runs a real-time scheduler
+# that coordinates motor control and user interface tasks.
 
 # ============================================================================
 # IMPORTS
@@ -13,56 +11,44 @@ that coordinates motor control and user interface tasks.
 import gc
 import micropython
 
-# Hardware drivers and timing
-print("Importing Micropyhthon")
+def _log(label):
+    gc.collect()
+    print(f"{label}: {gc.mem_free()}")
+
 from pyb import Timer, I2C
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
-print("Loading Task User")
+_log("pyb")
 from task_user import task_user
-gc.collect()
-from task_competition import task_competition
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
-
-print("Loading motor and sensor control")
-# Motor and sensor control
-from drivers.motor import Motor
-from drivers.encoder import Encoder
-from drivers.reflectance import Reflectance_Sensor
-from drivers.imu import BNO055
-from drivers.ultrasonic import UltrasonicSensor
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
-
-print("Loading Constants")
-# Configuration constants
-from constants import *
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
-
-print("Loading other tasks")
-# Task implementations
-from task_motor import task_motor
-gc.collect()
-from task_line_follow import task_line_follow
-gc.collect()
-from task_reflectance import task_reflectance
-gc.collect()
-from task_imu import task_imu
-gc.collect()
-from task_observer import task_observer
-gc.collect()
-from task_ultrasonic import task_ultrasonic
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
-
-print("Loaing Scheduling")
-# Inter-task communication and scheduling
+_log("task_user")
 from task_share import Share, Queue, show_all, clear_all
+_log("task_share")
 from cotask import Task, task_list
-gc.collect()
-print(f"Mem free: {gc.mem_free()}")
+_log("cotask")
+from task_competition import task_competition
+_log("task_competition")
+from drivers.motor import Motor
+_log("drivers.motor")
+from drivers.encoder import Encoder
+_log("drivers.encoder")
+from drivers.reflectance import Reflectance_Sensor
+_log("drivers.reflectance")
+from drivers.imu import BNO055
+_log("drivers.imu")
+from drivers.ultrasonic import UltrasonicSensor
+_log("drivers.ultrasonic")
+from constants import *
+_log("constants")
+from task_motor import task_motor
+_log("task_motor")
+from task_line_follow import task_line_follow
+_log("task_line_follow")
+from task_reflectance import task_reflectance
+_log("task_reflectance")
+from task_imu import task_imu
+_log("task_imu")
+from task_observer import task_observer
+_log("task_observer")
+from task_ultrasonic import task_ultrasonic
+_log("task_ultrasonic")
 
 micropython.alloc_emergency_exception_buf(100)
 
@@ -186,6 +172,8 @@ competitionGo          = Share("B", name="Competition go flag")
 
 ultrasonicDistance     = Share("f", name="Ultrasonic Sensor")
 
+memMonitorGo           = Share("B", name="Mem Monitor Go Flag")
+
 gc.collect()
 # ============================================================================
 # TASK INSTANTIATION
@@ -271,7 +259,8 @@ userTask = task_user(
     observerCenterDistance, observerHeading, observerHeadingRate, observerOmegaLeft, observerOmegaRight,
     observerDistanceLeft, observerDistanceRight,
     competitionGo,
-    ultrasonicDistance
+    ultrasonicDistance,
+    memMonitorGo
     )
 gc.collect()
 
@@ -299,6 +288,18 @@ ultrasonicTask = task_ultrasonic(
 )
 gc.collect()
 
+class task_mem_monitor:
+    def __init__(self, goFlag):
+        self._go = goFlag
+    def run(self):
+        while True:
+            if self._go.get():
+                gc.collect()
+                print(f"mem: {gc.mem_free()}")
+            yield
+memMonitorTask = task_mem_monitor(memMonitorGo)
+gc.collect()
+
 class RomiGarbage:
     def run(self):
         while True:
@@ -323,8 +324,8 @@ task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=2, period=40, profile=False))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
                       priority=3, period=30, profile=False))
-task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
-                      priority=4, period=100, profile=True))
+#task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
+#                      priority=4, period=100, profile=True))
 task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
                       priority=5, period=50, profile=False))
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
@@ -336,6 +337,8 @@ task_list.append(Task(observerTask.run, name="Observer Task", # MUST have 20ms p
 task_list.append(Task(competitionTask.run, name="Competition Task",
                       priority=9, period=50, profile=False))
 
+task_list.append(Task(memMonitorTask.run, name="Mem Monitor Task",
+                      priority=1, period=500, profile=False))
 task_list.append(Task(rg.run, name="Garbage collection",
                       priority=0, period=100, profile=True))
 
