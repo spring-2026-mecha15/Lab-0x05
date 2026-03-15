@@ -9,21 +9,13 @@ updates Shares/Queues to coordinate with motor tasks.
 Lightweight, comment-style type hints are included for clarity
 and static-readability but are safe for MicroPython (they are comments).
 """
-from pyb import USB_VCP, UART, ADC, Pin
-from task_share import Share, Queue
+from pyb import USB_VCP
 import micropython
-from multichar_input import multichar_input
-from constants import CSV_BEGIN, CSV_END, GAINS_FILE, BATT_ADC
-try:
-    import ujson as json
-except ImportError:
-    import json
-
-from pyb import I2C
-from drivers.imu import BNO055, NDOF_OP_MODE
+import sys
 import gc
-from utime import ticks_us, ticks_diff
-from drivers.reflectance import Reflectance_Sensor
+from constants import CSV_BEGIN, CSV_END
+
+sys.path.append('ui')
 
 # State constants (use micropython.const for efficiency on embedded)
 S0_PROMPT = micropython.const(0)        # Initial state: print prompt
@@ -332,129 +324,20 @@ class task_user:
             # S3_GAINS: prompt for motor and line following Kp and Ki (uses multichar_input)
             # -----------------------
             elif self._state == S3_GAINS:
-                # Prompt and read new motor Kp (assumes same gain for L/R)
-                self._ser.write(
-                    f"Current motor Kp gain: {self._leftMotorKp.get():.2f}\r\n"
-                )
-                self._ser.write("Enter a new motor Kp gain value: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    if value <= 0:
-                        self._ser.write("Invalid motor Kp gain (<= 0). Motor Kp gain unchanged")
-                    else:
-                        # Apply same Kp to both motors (preserved behavior)
-                        self._leftMotorKp.put(value)
-                        self._rightMotorKp.put(value)
-                        self._ser.write(f"Motor Kp Gain Set To: {value:.2f}\r\n")
-                else:
-                    self._ser.write("No value entered. Motor Kp gains unchanged.\r\n")
-
-                # Prompt and read new motor Ki (assumes same gain for L/R)
-                self._ser.write(
-                    f"\r\nCurrent motor Ki gains: {self._leftMotorKi.get():.2f}\r\n"
-                )
-                self._ser.write("Enter a new motor Ki gain value:\r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    if value < 0:
-                        self._ser.write("Invalid motor Ki gain (< 0). Motor Ki gains unchanged")
-                    else:
-                        self._leftMotorKi.put(value)
-                        self._rightMotorKi.put(value)
-                        self._ser.write(f"Motor Ki Gain Set To: {value} \r\n")
-                else:
-                    self._ser.write("No value entered. Motor Ki gains unchanged.\r\n")
-
-                # Prompt and read new line follower Kp
-                self._ser.write(
-                    f"\r\nCurrent line follower (LF) Kp gain: {self._lineFollowKp.get():.2f}\r\n"
-                )
-                self._ser.write("Enter a new LF Kp gain value:\r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    if value < 0:
-                        self._ser.write("Invalid LF Kp gain (< 0). LF Kp gains unchanged")
-                    else:
-                        self._lineFollowKp.put(value)
-                        self._ser.write(f"LF Kp Gain Set To: {value}\r\n")
-                else:
-                    self._ser.write("No value entered. LF Kp gains unchanged.\r\n")
-
-                # Prompt and read new line follower Ki
-                self._ser.write(
-                    f"\r\nCurrent line follower (LF) Ki gain: {self._lineFollowKi.get():.2f}\r\n"
-                )
-                self._ser.write("Enter a new LF Ki gain value:\r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    if value < 0:
-                        self._ser.write("Invalid LF Ki gain (< 0). LF Ki gains unchanged")
-                    else:
-                        self._lineFollowKi.put(value)
-                        self._ser.write(f"LF Ki Gain Set To: {value}\r\n")
-                else:
-                    self._ser.write("No value entered. LF Ki gains unchanged.\r\n")
-
-                # Prompt and read new LF feed forward gain
-                self._ser.write(
-                    f"\r\nCurrent LF Kff gain: {self._lineFollowKff.get():.2f}\r\n"
-                )
-                self._ser.write("Enter a new LF Kff gain value:\r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    if value < 0:
-                        self._ser.write("Invalid LF Kff gain (< 0). LF Kff gain unchanged")
-                    else:
-                        self._lineFollowKff.put(value)
-                        self._ser.write(f"LF Kff Gain Set To: {value}\r\n")
-                else:
-                    self._ser.write("No value entered. LF Kff gain unchanged.\r\n")
-
-                # Show final values and return to prompt
-                self._ser.write("\r\nController gains:\r\n")
-                self._ser.write(f" - Motor Kp: {self._leftMotorKp.get():.2f}\r\n")
-                self._ser.write(f" - Motor Ki: {self._leftMotorKi.get():.2f}\r\n")
-                self._ser.write(f" - Line follower Kp: {self._lineFollowKp.get():.2f}\r\n")
-                self._ser.write(f" - Line follower Ki: {self._lineFollowKi.get():.2f}\r\n")
-                self._ser.write(f" - Line follower Kff: {self._lineFollowKff.get():.2f}\r\n")
-                if not self._save_gains():
-                    self._ser.write(f"Warning: failed to save {GAINS_FILE}.\r\n")
-
+                import ui_gains
+                yield from ui_gains.run(self)
+                del sys.modules['ui_gains']
+                gc.collect()
                 self._state = S0_PROMPT
 
             # -----------------------
             # S4_SETPOINT: prompt for setpoints (uses multichar_input)
             # -----------------------
             elif self._state == S4_SETPOINT:
-                self._ser.write(f"\r\nCurrent motor setpoint: {self._leftMotorSetPoint.get():.2f}\r\n")
-                self._ser.write("\r\nEnter new motor setpoint: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    self._leftMotorSetPoint.put(value)
-                    self._rightMotorSetPoint.put(value)
-                    self._ser.write(f"\r\nSetpoint Set To: {value:.2f}")
-                else:
-                    self._ser.write("\r\nNo setpoint specified. Value unchanged.")
-
-
-                self._ser.write(f"\r\nCurrent line follow setpoint: {self._lineFollowSetPoint.get():.2f}\r\n")
-                self._ser.write("\r\nEnter new LF setpoint: \r\n->: ")
-                value = yield from multichar_input(self._ser)
-
-                if value is not None:
-                    self._lineFollowSetPoint.put(value)
-                    self._ser.write(f"\r\nLF Setpoint Set To: {value:.2f}")
-                else:
-                    self._ser.write("\r\nNo LF setpoint specified. Value unchanged.")
-
-                self._save_gains()
-
+                import ui_setpoint
+                yield from ui_setpoint.run(self)
+                del sys.modules['ui_setpoint']
+                gc.collect()
                 self._state = S0_PROMPT
 
             # -----------------------
@@ -495,444 +378,52 @@ class task_user:
             # S6_DEBUG: debug state
             # -----------------------
             elif self._state == S6_DEBUG:
-                self._ser.write("DEBUG\r\n")
-
-                ############################################
-                # LINE SENSOR CENTROID VISUALIZATION
-                ############################################
-                raw, calibrated, value, found = self._reflectanceSensor.get_values()
-                self._ser.write(f" RAW   CALIBRATED  \r\n")
-                for i in range(len(raw)):
-                    self._ser.write(f"{raw[i]:04d}")
-                    self._ser.write('   ')
-                    for _ in range(int(calibrated[i]*10)):
-                        self._ser.write('+')
-                    self._ser.write("\r\n")
-
-                self._ser.write(f"Measured centroid: {value:.2f}\r\n")
-                self._ser.write(f"Line detected: {"TRUE" if found else "FALSE"}\r\n\n")
-                # self._ser.write("\r\nPlease Enter a Speed: \r\n->: ")
-                # value = yield from multichar_input(self._ser)
-                ############################################
-                ############################################
-                # BATTERY LEVEL
-                ############################################
-                # --- Scale value to account for battery droop
-                adcVoltage = ADC(BATT_ADC).read() / 4096 * 3.3
-
-                # Scale for 4.7k and 10k voltage divider.
-                # (Slightly tweaked to account for actual VDD)
-                battVoltage = adcVoltage / 0.305
-
-                self._ser.write(f"Battery voltage: {battVoltage:.2f}V\r\n\n")
-
-
-                ############################################
-                # BATTERY LEVEL
-                ############################################
-                distance = self._ultrasonicDistance.get()
-                self._ser.write(f"Ultrasonic distance: {distance:.2f}cm\r\n")
-                ############################################
-
-
-
-                # Return to main prompt
+                import ui_debug
+                yield from ui_debug.run(self)
+                del sys.modules['ui_debug']
+                gc.collect()
                 self._state = S0_PROMPT
 
             # -----------------------
             # S7_CALIBRATE: calibration state
             # -----------------------
             elif self._state == S7_CALIBRATION:
-                self._ser.write("CALIBRATION\r\n")
-
-                # Double check this is the action the user wants to make
-                self._ser.write("Would you like to begin calibration (y/n)?\r\n")
-
-                # Check for a valid keystroke
-                while True:
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode()
-                        if inChar in {"y", "Y", "n", "N"}:
-                            break
-
-                # If NO selected, return to main menu from this point
-                if inChar in {"n", "N"}:
-                    self._state = S0_PROMPT
-
-                    yield 0
-                    continue
-
-                # Begin with light side calibration
-                self._ser.write("Place Romi on a light surface. Press Enter when ready\r\n")
-                # Wait for ENT (cooperative)
-                while True:
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode()
-                        if inChar in {"\r", "\n"}:
-                            # Clear any remaining input then exit help
-                            while self._ser.any():
-                                self._ser.read(1)
-                            break
-                    yield 0
-
-                # Request that reflectance sensor goes into light calib. mode
-                self._reflectanceMode.put(2)
-
-                # Wait for 'ack' that calibration is done (mode = 0)
-                while self._reflectanceMode.get() != 0:
-                    yield 0
-
-                # Then perform dark side calibration
-                self._ser.write("Please Place Romi On a Dark Surface. Press Enter When Complete\r\n")
-
-                # Wait for ENT (cooperative)
-                while True:
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode()
-                        if inChar in {"\r", "\n"}:
-                            # Clear any remaining input then exit help
-                            while self._ser.any():
-                                self._ser.read(1)
-                            break
-                    yield 0
-
-                # Request that reflectance sensor goes into light calib. mode
-                self._reflectanceMode.put(1)
-
-                # Wait for 'ack' that calibration is done (mode = 0)
-                while self._reflectanceMode.get() != 0:
-                    yield 0
-
-                self._ser.write('Sensor calibration complete.\r\n')
-
-                # Return to main prompt
+                import ui_calibration
+                yield from ui_calibration.run(self)
+                del sys.modules['ui_calibration']
+                gc.collect()
                 self._state = S0_PROMPT
 
             # -----------------------
             # S8_LINEFOLLOW: Line Following State
             # -----------------------
             elif self._state == S8_LINEFOLLOW:
-                self._ser.write("Line Follow Mode\r\n")
-                # self._UART.write("Line Follow Mode\r\n")
-
-                # Set sensor array into RUN mode
-                self._reflectanceMode.put(3)
-                self._leftMotorGo.put(1)
-                self._rightMotorGo.put(1)
-                yield # Let sensor array pick up the change
-
-                # Enable line following controller
-                self._lineFollowGo.put(1)
-
-                self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
-
-                # Wait for newline or carriage return, non-blocking (yielding)
-                self._ser.write(f"{CSV_BEGIN}\r\n")
-                stream_decimation = 5
-                sample_idx = 0
-                while True:
-                    # Decimate queued samples; stream only every Nth row to reduce CSV volume.
-                    # """if self._centroidTimeValues.any() and self._centroidValues.any():
-                    #     t_ms = self._centroidTimeValues.get()
-                    #     centroid = self._centroidValues.get()
-                    #     if (sample_idx % stream_decimation) == 0:
-                    #         self._ser.write(f"{t_ms},{centroid}\r\n")
-                    #     sample_idx += 1"""
-
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode()
-                        if inChar in {"\r", "\n"}:
-                            # Clear any remaining input then exit help
-                            while self._ser.any():
-                                self._ser.read(1)
-                            break
-                    yield 0
-                    
-                # Stop line-following mode and related tasks before returning.
-                self._ser.write(f"{CSV_END}\r\n")
-
-                self._lineFollowGo.put(0)
-                self._reflectanceMode.put(0)
-                self._leftMotorGo.put(0)
-                self._rightMotorGo.put(0)
-                self._leftMotorSetPoint.put(0)
-                self._rightMotorSetPoint.put(0)
-
-                
-                # Return to main prompt
+                import ui_linefollow
+                yield from ui_linefollow.run(self)
+                del sys.modules['ui_linefollow']
+                gc.collect()
                 self._state = S0_PROMPT
 
             # -----------------------
             # S9_IMU_Menue: Line Following State
             # -----------------------
             elif self._state == S9_IMU_MENU:
-                self._ser.write("\r\n")
-                self._ser.write("  +--------------------------------+\r\n")
-                self._ser.write("  | IMU Submenu                    |\r\n")
-                self._ser.write("  +--------------------------------+\r\n")
-                self._ser.write("  | 1: Load calibration            |\r\n")
-                self._ser.write("  | 2: Save calibration            |\r\n")
-                self._ser.write("  | 3: Tare accel and gyro         |\r\n")
-                self._ser.write("  | 4: Read and print values       |\r\n")
-                self._ser.write("  | 5: Get calibration states      |\r\n")
-                self._ser.write("  |                                |\r\n")
-                self._ser.write("  | 0: Exit                        |\r\n")
-                self._ser.write("  +--------------------------------+\r\n")
-                self._ser.write("  ->: ")
-
-                while True:
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode('ascii')
-
-                        if inChar.isdigit():
-                            user_sel = int(inChar)
-
-                            # Load calibration from file
-                            if user_sel == 0:
-                                self._ser.write(f"{inChar}\r\n")
-
-                                self._state = S0_PROMPT
-                                break # Return to main menu
-
-                            elif user_sel == 1:
-                                self._ser.write(f"{inChar}\r\n")
-                                self._imuMode.put(1)
-
-                                while not self._imuMode.get():
-                                    yield
-
-                                self._ser.write("Calibration loaded.\r\n")
-
-                                break # Redraw imu submenu
-
-                            # Save calibration to file
-                            elif user_sel == 2:
-                                self._ser.write(f"{inChar}\r\n")
-                                self._imuMode.put(2)
-                                
-                                while not self._imuMode.get():
-                                    yield
-                                self._ser.write("Calibration saved.\r\n")
-
-                                break # Redraw imu submenu
-
-                            # Tare readings
-                            elif user_sel == 3:
-                                self._ser.write(f"{inChar}\r\n")
-                                self._imuMode.put(3)
-                                
-                                while not self._imuMode.get():
-                                    yield
-
-                                self._ser.write("  Readings tared.\r\n")
-
-                                break # Redraw imu submenu
-
-                            # Read and print
-                            elif user_sel == 4:
-                                self._ser.write(f"{inChar}\r\n")
-                                self._imuMode.put(4)
-
-                                while not self._imuMode.get():
-                                    yield
-                                    
-                                heading = self._imuHeading.get()
-                                headingRate = self._imuHeadingRate.get()
-
-                                self._ser.write("  IMU Data: \r\n")
-                                self._ser.write(f"   - heading: {heading}\r\n")
-                                self._ser.write(f"   - heading rate: {headingRate}\r\n")
-
-                                break # Redraw imu submenu
-
-                            # Get calibration status
-                            elif user_sel == 5:
-                                self._ser.write(f"{inChar}\r\n")
-                                self._imuMode.put(5)
-
-                                while not self._imuMode.get():
-                                    yield
-
-                                raw_calib = self._imuCalib.get()
-
-                                s_sys = (raw_calib >> 6) & 0x03
-                                s_gyro = (raw_calib >> 4) & 0x03
-                                s_accel = (raw_calib >> 2) & 0x03
-                                s_mag = raw_calib & 0x03
-
-                                self._ser.write("  Calibration status: \r\n")
-                                self._ser.write(f"   - System: {s_sys}\r\n")
-                                self._ser.write(f"   - Gyro:   {s_gyro}\r\n")
-                                self._ser.write(f"   - Accel:  {s_accel}\r\n")
-                                self._ser.write(f"   - Mag:    {s_mag}\r\n")
-                                    
-                                break # Redraw imu submenu
-
-
-                    yield
+                import ui_imu
+                yield from ui_imu.run(self)
+                del sys.modules['ui_imu']
+                gc.collect()
+                self._state = S0_PROMPT
 
 
 
             # -----------------------
             # S10_State_Estimation: State Estimation Test
-            # -----------------------                    
+            # -----------------------
             elif self._state == S10_STATE_ESTIMATION:
-                self._ser.write("State Estimation Test\r\n")
-
-                # # Set sensor array into RUN mode
-                # # self._leftMotorSetPoint.put(100)
-                # # self._rightMotorSetPoint.put(100)
-                # self._reflectanceMode.put(3)
-                # self._leftMotorGo.put(1)
-                # self._rightMotorGo.put(1)
-                # self._observerGoFlag.put(1)
-                # yield # Let sensor array pick up the change
-
-                # # # Enable line following controller
-                # self._lineFollowSetPoint.put(100)
-                # self._lineFollowGo.put(1)
-                # # self._lineFollowGo.put(0)
-                # # Run IMU continuously while in this mode
-                # self._imuMode.put(0xFF)
-
-                self._competitionGoFlag.put(1)
-                # self._imuMode.put(0xFF)
-
-                self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
-
-                # # Wait for newline or carriage return, non-blocking (yielding)
-                # self._ser.write(f"{CSV_BEGIN}\r\n")
-                # self._ser.write(
-                #     "Time (ms),"
-                #     "centerDistance_sensor (mm),"
-                #     "centerDistance_observer (mm),"
-                #     "distL_sensor (mm),"
-                #     "distL_observer (mm),"
-                #     "distR_sensor (mm),"
-                #     "distR_observer (mm),"
-                #     "heading_sensor,"
-                #     "heading_observer,"
-                #     "headingRate_sensor,"
-                #     "headingRate_observer,"
-                #     "omegaL_sensor (rad/s),"
-                #     "omegaL_observer (rad/s),"
-                #     "omegaR_sensor (rad/s),"
-                #     "omegaR_observer (rad/s),"
-                #     "centerDistance_error (mm),"
-                #     "distL_error (mm),"
-                #     "distR_error (mm),"
-                #     "heading_error,"
-                #     "headingRate_error,"
-                #     "omegaL_error (rad/s),"
-                #     "omegaR_error (rad/s)\r\n"
-                # )
-
-                stream_decimation = 5
-                sample_idx = 0
-                start_time = ticks_us()
-
-                while True:
-                    # Check if observer has traveled X distance, then stop motors
-                    # if not self._observerGoFlag.get():
-                    if self._competitionGoFlag.get() == 0:
-                        break
-
-                    self._ser.write(f"c: {self._observerCenterDistance.get()}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
-                    # self._ser.write(f"c: {0.5 * (self._wheelDistLeft.get() + self._wheelDistRight.get())}, s: {self._lineFollowSetPoint.get():.2f}\r\n")
-
-
-                    # if (sample_idx % stream_decimation) == 0:
-                    #     t_ms = int(ticks_diff(ticks_us(), start_time) / 1000)
-                    #     wheelDistLeft = self._wheelDistLeft.get()
-                    #     wheelDistRight = self._wheelDistRight.get()
-                    #     observerDistanceLeft = self._observerDistanceLeft.get()
-                    #     observerDistanceRight = self._observerDistanceRight.get()
-                    #     imuHeading = self._imuHeading.get()
-                    #     observerHeading = self._observerHeading.get()
-                    #     imuHeadingRate = self._imuHeadingRate.get()
-                    #     observerHeadingRate = self._observerHeadingRate.get()
-                    #     motorOmegaLeft = self._motorOmegaLeft.get()
-                    #     observerOmegaLeft = self._observerOmegaLeft.get()
-                    #     motorOmegaRight = self._motorOmegaRight.get()
-                    #     observerOmegaRight = self._observerOmegaRight.get()
-                    #     centerDistance_sensor = 0.5 * (wheelDistLeft + wheelDistRight)
-                    #     centerDistance_observer = self._observerCenterDistance.get()
-
-                    #     # Error calculations (sensor - observer)
-                    #     centerDistance_error = centerDistance_sensor - centerDistance_observer
-                    #     distL_error = wheelDistLeft - observerDistanceLeft
-                    #     distR_error = wheelDistRight - observerDistanceRight
-                    #     heading_error = imuHeading - observerHeading
-                    #     headingRate_error = imuHeadingRate - observerHeadingRate
-                    #     omegaL_error = motorOmegaLeft - observerOmegaLeft
-                    #     omegaR_error = motorOmegaRight - observerOmegaRight
-                        
-                    #     line = (
-                    #         "{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}\r\n".format(
-                    #             t_ms,
-                    #             centerDistance_sensor,
-                    #             centerDistance_observer,
-                    #             wheelDistLeft,
-                    #             observerDistanceLeft,
-                    #             wheelDistRight,
-                    #             observerDistanceRight,
-                    #             imuHeading,
-                    #             observerHeading,
-                    #             imuHeadingRate,
-                    #             observerHeadingRate,
-                    #             motorOmegaLeft,
-                    #             observerOmegaLeft,
-                    #             motorOmegaRight,
-                    #             observerOmegaRight,
-                    #             centerDistance_error,
-                    #             distL_error,
-                    #             distR_error,
-                    #             heading_error,
-                    #             headingRate_error,
-                    #             omegaL_error,
-                    #             omegaR_error,
-                    #         )
-                    #     )
-                    #     self._ser.write(line)
-                    #     # error_line = (
-                    #     #     "t_ms={}, centerDistance_error={}, distL_error={}, distR_error={}, "
-                    #     #     "heading_error={}, headingRate_error={}, omegaL_error={}, omegaR_error={}\r\n".format(
-                    #     #         t_ms,
-                    #     #         centerDistance_error,
-                    #     #         distL_error,
-                    #     #         distR_error,
-                    #     #         heading_error,
-                    #     #         headingRate_error,
-                    #     #         omegaL_error,
-                    #     #         omegaR_error,
-                    #     #     )
-                    #     # ))
-                    #     # self._ser.write(error_line)
-                    # sample_idx += 1
-
-                    if self._ser.any():
-                        inChar = self._ser.read(1).decode()
-                        if inChar in {"\r", "\n"}:
-                            # Clear any remaining input then exit help
-                            while self._ser.any():
-                                self._ser.read(1)
-                            break
-                    yield 0
-                    
-                # Stop line-following mode and related tasks before returning.
-                self._ser.write(f"{CSV_END}\r\n")
-
-                self._competitionGoFlag.put(0)
-                self._lineFollowGo.put(0)
-                self._reflectanceMode.put(0)
-                self._imuMode.put(0)
-                self._leftMotorGo.put(0)
-                self._rightMotorGo.put(0)
-                self._leftMotorSetPoint.put(0)
-                self._rightMotorSetPoint.put(0)
-
-                
-                # Return to main prompt
+                import ui_competition
+                yield from ui_competition.run(self)
+                del sys.modules['ui_competition']
+                gc.collect()
                 self._state = S0_PROMPT
 
 
