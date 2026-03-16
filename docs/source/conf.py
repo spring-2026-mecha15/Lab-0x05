@@ -62,6 +62,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath('../..'))          # project root (main.py, task_*.py, etc.)
 sys.path.insert(0, os.path.abspath('../../drivers'))  # drivers/ package
 sys.path.insert(0, os.path.abspath('../../desktop'))  # desktop/ tools
+sys.path.insert(0, os.path.abspath('../../ui'))  # desktop/ tools
 
 # Run apidoc during sphinx-build (replaces separate Makefile apidoc step)
 _project_root = os.path.abspath('../..')
