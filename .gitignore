@@ -16,3 +16,4 @@ docs/build/
 # Sphinx generated API stubs
 docs/source/api/generated/
 /micropython_sync_tools
+/docs/_build
