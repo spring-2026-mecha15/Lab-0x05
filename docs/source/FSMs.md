@@ -5,13 +5,13 @@ This project uses Finite State Machines (FSMs) implemented as Python generators 
 ## Summary & Interaction
 
 - **[task_user](#user-interface-task-task-user-py)**: Command hub; enables/disables other tasks
-- **[task_motor](#motor-control-task-task_motorpy)**: Two instances (left/right); controlled by goFlag from task_user or task_competition
-- **[task_observer](#observerstate-estimator-task-task_observerpy)**: Provides center distance used by task_competition for segment tracking
-- **[task_reflectance](#reflectance-sensor-task-task_reflectancepy)**: Provides centroid & line_found used by task_line_follow and task_competition
-- **[task_line_follow](#line-following-task-task_line_followpy)**: Steers motors based on centroid; gains & setpoint set by task_user or task_competition
-- **[task_imu](#imu-task-task_imupy)**: Provides heading used for rotation tracking; calibration managed via task_user
-- **[task_ultrasonic](#ultrasonic-distance-task-task_ultrasonicpy)**: Provides distance; monitored by task_competition during S5 (garage approach)
-- **[task_competition](#competition-course-task-task_competitionpy)**: Orchestrates entire race; controls setpoints, enables/disables subsystems per segment
+- **[task_motor](#motor-control-task-task-motor-py)**: Two instances (left/right); controlled by goFlag from task_user or task_competition
+- **[task_observer](#observerstate-estimator-task-task-observer-py)**: Provides center distance used by task_competition for segment tracking
+- **[task_reflectance](#reflectance-sensor-task-task-reflectance-py)**: Provides centroid & line_found used by task_line_follow and task_competition
+- **[task_line_follow](#line-following-task-task-line_follow-py)**: Steers motors based on centroid; gains & setpoint set by task_user or task_competition
+- **[task_imu](#imu-task-task-imu-py)**: Provides heading used for rotation tracking; calibration managed via task_user
+- **[task_ultrasonic](#ultrasonic-distance-task-task-ultrasonic-py)**: Provides distance; monitored by task_competition during S5 (garage approach)
+- **[task_competition](#competition-course-task-task-competition-py)**: Orchestrates entire race; controls setpoints, enables/disables subsystems per segment
 
 ---
 
