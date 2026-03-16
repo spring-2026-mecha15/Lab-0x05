@@ -56,10 +56,10 @@ S8_CROSS_DIST      = 100    # TBD: LF distance before cross detected in S8 (mm)
 S11_CUP_PUSH_DIST  = 450    # Distance to drive forward to push cup (mm)
 S11_REVERSE_DIST   = 450    # Distance to reverse after cup push (mm)
 
-S13_FORWARD_DIST   = 1800   # TBD: short LF distance to clear right corner in S13 (mm)
-S14_DIST           = 800    # TBD: slalom LF distance before transitioning to S15 (mm)
+S13_FORWARD_DIST   = 1000   # TBD: short LF distance to clear right corner in S13 (mm)
+S14_DIST           = 1800    # TBD: slalom LF distance before transitioning to S15 (mm)
 
-S15_DIST           = 157    # TBD: R150 feed-forward arc distance (mm)
+S15_DIST           = 167    # TBD: R150 feed-forward arc distance (mm)
 S15_KFF            = 0.4    # TBD: Kff for R150 arc
 
 S16_DIST           = 50     # Standard LF distance in S16 (mm)
@@ -233,7 +233,7 @@ class task_competition:
                 if not self._lineFound.get():
                     self._lineFollowGo.put(0)
                     self._lineFollowKff.put(0)
-                    left_speed, right_speed = wheel_speeds(200, 75)
+                    left_speed, right_speed = wheel_speeds(200, 100)
                     self._leftMotorSetPoint.put(left_speed)
                     self._rightMotorSetPoint.put(right_speed)
                     self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
@@ -250,7 +250,7 @@ class task_competition:
                     self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
                     # self._lineFollowGo.put(75)
                     # self._lineFollowKff.put(75)
-                    left_speed, right_speed = wheel_speeds(125, 50)
+                    left_speed, right_speed = wheel_speeds(125, 75)
                     self._leftMotorSetPoint.put(left_speed)
                     self._rightMotorSetPoint.put(right_speed)
                     self._state = S5
@@ -258,8 +258,8 @@ class task_competition:
             elif self._state == S5:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= 205:
                     self._centerStartDist = self._observerCenterDistance.get() # Reset distance reference
-                    left_speed = 75
-                    right_speed = 75
+                    left_speed = 100
+                    right_speed = 100
                     self._leftMotorSetPoint.put(left_speed)
                     self._rightMotorSetPoint.put(right_speed)
                     self._lineFollowKff.put(0)
@@ -269,8 +269,8 @@ class task_competition:
                 # if (self._observerCenterDistance.get() - self._centerStartDist) >= 375:
                 u_dist = self._ultrasonicDistance.get()
                 if u_dist < 20 and u_dist > 0:
-                    self._leftMotorSetPoint.put(75/20 * u_dist)
-                    self._rightMotorSetPoint.put(75/20 * u_dist)
+                    self._leftMotorSetPoint.put(2.5 * u_dist + 50)
+                    self._rightMotorSetPoint.put(2.5 * u_dist + 50)
                 if u_dist < 5:
                     self._leftMotorSetPoint.put(0)
                     self._rightMotorSetPoint.put(0)
@@ -287,7 +287,7 @@ class task_competition:
             elif self._state == S8:
                 if self._lineFound.get() and self._centroid.get() <= -0.4:
                     self._centerStartDist = self._observerCenterDistance.get()
-                    self._lineFollowSetPoint.put(75)
+                    self._lineFollowSetPoint.put(100)
                     self._lineFollowGo.put(1)
                     self._state = S9
                     # self._state = S13
@@ -375,14 +375,15 @@ class task_competition:
 
             # Slow down in anticipation for dashed line
             elif self._state == S13:
-                if (self._observerCenterDistance.get() - self._centerStartDist) >= S13_FORWARD_DIST:
-                    self._lineFollowSetPoint.put(30)
-                    self._state = S14
+                # if (self._observerCenterDistance.get() - self._centerStartDist) >= S13_FORWARD_DIST:
+                #     self._lineFollowSetPoint.put()
+                #     self._state = S14
+                self._state = S14
 
             # Begin u-turn after dashed line
             elif self._state == S14:
                 # if not self._lineFound.get():
-                if (self._observerCenterDistance.get() - self._centerStartDist) >= S13_FORWARD_DIST:
+                if (self._observerCenterDistance.get() - self._centerStartDist) >= S14_DIST:
                     self._lineFollowGo.put(0)
                     self._centerStartDist = self._observerCenterDistance.get()
                     left_speed, right_speed = wheel_speeds(-50, 50)
@@ -420,6 +421,9 @@ class task_competition:
             elif self._state == S18:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= S18_DIST:
                     self._centerStartDist = self._observerCenterDistance.get()
+                    # left_speed, right_speed = wheel_speeds(300, 50)
+                    # self._leftMotorSetPoint.put(left_speed)
+                    # self._rightMotorSetPoint.put(right_speed)
                     self._leftMotorSetPoint.put(50)
                     self._rightMotorSetPoint.put(50)
                     self._state = S19
