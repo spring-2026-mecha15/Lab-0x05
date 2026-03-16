@@ -5,6 +5,7 @@ import math
 
 
 def cooperative_delay_ms(delay_ms, state=0):
+    """Yield for specified milliseconds, compatible with cooperative scheduler."""
     deadline = utime.ticks_add(utime.ticks_ms(), int(delay_ms))
     while utime.ticks_diff(deadline, utime.ticks_ms()) > 0:
         yield state
@@ -106,12 +107,17 @@ class BNO055:
 
     # ---------- Device Control ----------
     def set_mode(self, mode):
+        """Set sensor operation mode and wait for stabilization."""
         # per datasheet, switch to CONFIG before changing certain settings
         self._write_byte(OPR_MODE_REG, mode & 0xFF)
         self.mode = mode
         yield from cooperative_delay_ms(30)
 
     def reset(self):
+        """Perform hardware reset and verify chip responds.
+        
+        Returns: True if chip ready, False if timeout.
+        """
         # Trigger system reset
         yield from self.set_mode(CONFIG_OP_MODE)
         self._write_byte(SYS_TRIGGER_REG, 0x20)
@@ -124,6 +130,13 @@ class BNO055:
         return False
 
     def initialize(self, mode=NDOF_OP_MODE):
+        """Initialize sensor, configure power/units, and set operating mode.
+        
+        Args:
+            mode: Operation mode (default: NDOF_OP_MODE).
+        
+        Returns: True on success. Raises OSError if chip not found.
+        """
         # Check chip ID
         chip = self._read_byte(CHIP_ID_REG)
         if chip != BNO055_ID:
@@ -160,6 +173,10 @@ class BNO055:
 
     # ---------- Calibration ----------
     def calibration_status(self):
+        """Get calibration status for each sensor (sys, gyro, accel, mag).
+        
+        Returns: Tuple of 4 values (0-3 each, higher = better calibrated).
+        """
         # 2 bits each: sys, gyro, accel, mag
         calibration = self._read_byte(CALIB_STAT_REG)
         sys = (calibration >> 6) & 0x03
@@ -169,6 +186,7 @@ class BNO055:
         return sys, gyro, accel, mag
 
     def get_calibration_offsets(self):
+        """Retrieve stored calibration offset profile (22 bytes)."""
         prev_mode = self.mode
         yield from self.set_mode(CONFIG_OP_MODE)
         yield from cooperative_delay_ms(25)
@@ -179,6 +197,7 @@ class BNO055:
         return offsets
 
     def set_calibration_offsets(self, offsets):
+        """Load calibration offset profile (must be exactly 22 bytes)."""
         payload = bytes(offsets)
         if len(payload) != CALIB_PROFILE_LEN:
             raise ValueError("offsets must be 22 bytes")
@@ -194,29 +213,46 @@ class BNO055:
         return True
 
     def clear_calibration_offsets(self):
+        """Reset all calibration offsets to zero."""
         return (yield from self.set_calibration_offsets(bytes(CALIB_PROFILE_LEN)))
 
 
     # ---------- Tare ----------
     def set_tare(self, accel_xyz, gyro_xyz):
+        """Manually set tare offsets for acceleration and gyroscope."""
         self.accel_tare = (float(accel_xyz[0]), float(accel_xyz[1]), float(accel_xyz[2]))
         self.gyro_tare = (float(gyro_xyz[0]), float(gyro_xyz[1]), float(gyro_xyz[2]))
 
     def get_tare(self):
+        """Get current tare offsets.
+        
+        Returns: Tuple (accel_tare, gyro_tare).
+        """
         return self.accel_tare, self.gyro_tare
 
     def set_euler_tare(self, euler_hrp):
+        """Manually set tare offset for Euler angles (heading, roll, pitch)."""
         self.euler_tare = (float(euler_hrp[0]), float(euler_hrp[1]), float(euler_hrp[2]))
 
     def get_euler_tare(self):
+        """Get current Euler angle tare offset."""
         return self.euler_tare
 
     def clear_tare(self):
+        """Reset all tare offsets to zero."""
         self.accel_tare = (0.0, 0.0, 0.0)
         self.gyro_tare = (0.0, 0.0, 0.0)
         self.euler_tare = (0.0, 0.0, 0.0)
 
     def tare_accel_gyro(self, sample_count=100, sample_delay_ms=5):
+        """Calibrate accelerometer and gyroscope offsets by sampling while stationary.
+        
+        Args:
+            sample_count: Number of samples to average (default: 100).
+            sample_delay_ms: Delay between samples in ms (default: 5).
+        
+        Returns: Tuple (accel_tare, gyro_tare).
+        """
         if sample_count <= 0:
             raise ValueError("sample_count must be > 0")
 
@@ -253,6 +289,14 @@ class BNO055:
         return self.accel_tare, self.gyro_tare
 
     def tare_euler(self, sample_count=20, sample_delay_ms=5):
+        """Calibrate Euler angle heading offset by sampling while stationary.
+        
+        Args:
+            sample_count: Number of samples to average (default: 20).
+            sample_delay_ms: Delay between samples in ms (default: 5).
+        
+        Returns: Euler tare tuple (heading, roll, pitch).
+        """
         if sample_count <= 0:
             raise ValueError("sample_count must be > 0")
 
@@ -279,43 +323,52 @@ class BNO055:
 
     # ---------- Sensor Readings  ----------
     def temperature(self):
+        """Read sensor die temperature in degrees Celsius."""
         temp = self._read_byte(TEMP_REG)
         # signed 8-bit
         return temp - 256 if temp & 0x80 else temp
 
     def acceleration_raw(self):
+        """Read uncalibrated acceleration in m/s²."""
         x, y, z = self._read_vec3_int16(ACC_DATA_X_LSB_REG)
         return (x * SCALE_ACCEL_MS2, y * SCALE_ACCEL_MS2, z * SCALE_ACCEL_MS2)
 
     def gyro_raw(self):
+        """Read uncalibrated angular velocity in rad/s."""
         x, y, z = self._read_vec3_int16(GYR_DATA_X_LSB_REG)
         return (x * SCALE_GYRO_RPS, y * SCALE_GYRO_RPS, z * SCALE_GYRO_RPS)
 
     def euler_raw(self):
+        """Read uncalibrated Euler angles in radians (heading, roll, pitch)."""
         # heading, roll, pitch
         h, r, p = self._read_vec3_int16(EUL_HEADING_LSB_REG)
         return (h * SCALE_EULER_RAD, r * SCALE_EULER_RAD, p * SCALE_EULER_RAD)
 
     def acceleration(self):
+        """Read tare-corrected acceleration in m/s²."""
         ax, ay, az = self.acceleration_raw()
         tx, ty, tz = self.accel_tare
         return (ax - tx, ay - ty, az - tz)
 
     def magnetic(self):
+        """Read magnetometer data in microteslas (µT)."""
         x, y, z = self._read_vec3_int16(MAG_DATA_X_LSB_REG)
         return (x * SCALE_MAG_UT, y * SCALE_MAG_UT, z * SCALE_MAG_UT)
 
     def gyro(self):
+        """Read tare-corrected angular velocity in rad/s."""
         gx, gy, gz = self.gyro_raw()
         tx, ty, tz = self.gyro_tare
         return (gx - tx, gy - ty, gz - tz)
 
     def euler(self):
+        """Read tare-corrected Euler angles in radians (heading, roll, pitch)."""
         h, r, p = self.euler_raw()
         th, tr, tp = self.euler_tare
         return (h - th, r - tr, p - tp)
 
     def quaternion(self):
+        """Read sensor fusion quaternion (w, x, y, z)."""
         b = self._read_bytes(QUA_DATA_W_LSB_REG, 8, self._quat_buf)
         w = self._bytes_to_int16(b[0], b[1]) * SCALE_QUAT
         x = self._bytes_to_int16(b[2], b[3]) * SCALE_QUAT
@@ -324,9 +377,11 @@ class BNO055:
         return (w, x, y, z)
 
     def linear_acceleration(self):
+        """Read fusion-computed linear acceleration (gravity-removed) in m/s²."""
         x, y, z = self._read_vec3_int16(LIA_DATA_X_LSB_REG)
         return (x * SCALE_ACCEL_MS2, y * SCALE_ACCEL_MS2, z * SCALE_ACCEL_MS2)
 
     def gravity(self):
+        """Read fusion-computed gravity vector in m/s²."""
         x, y, z = self._read_vec3_int16(GRV_DATA_X_LSB_REG)
         return (x * SCALE_ACCEL_MS2, y * SCALE_ACCEL_MS2, z * SCALE_ACCEL_MS2)
