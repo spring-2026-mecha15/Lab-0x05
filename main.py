@@ -250,7 +250,7 @@ userTask = task_user(
     centroidValues, centroidTimeValues,
     reflectanceMode, reflectanceSensor,
     lineFollowGo, lineFollowSetPoint, lineFollowKp,
-    lineFollowKi, lineCentroid, lineFollowKff,
+    lineFollowKi, lineCentroid, lineFollowKff, lineFound,
     imuMode, imuCalibration,
     #Shares for State Estimation
     imuHeadingRate, motorVoltageLeft, motorVoltageRight, wheelDistLeft, 
@@ -270,6 +270,7 @@ competitionTask = task_competition(
     lineFollowSetPoint,
     lineFound,
     lineFollowKff,
+    lineCentroid,
     observerGoFlag,
     reflectanceMode,
     observerCenterDistance,

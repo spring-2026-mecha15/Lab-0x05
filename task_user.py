@@ -13,7 +13,9 @@ from pyb import USB_VCP
 import micropython
 import sys
 import gc
-from constants import CSV_BEGIN, CSV_END
+from constants import CSV_BEGIN, CSV_END, GAINS_FILE
+from task_share import Share, Queue
+from drivers.reflectance import Reflectance_Sensor
 
 sys.path.append('ui')
 
@@ -76,6 +78,7 @@ class task_user:
         lineFollowKi,          # type: Share
         lineCentroid,          # type: Share
         lineFollowKff,         # type: Share
+        lineFound,             # type: Share
         imuMode,               # type: Share
         imuCalibration,        # type: Share
         imuHeadingRate,        # type: Share
@@ -134,6 +137,7 @@ class task_user:
         self._lineFollowKi = lineFollowKi           # type: Share
         self._lineCentroid = lineCentroid           # type: Share
         self._lineFollowKff = lineFollowKff         # type: Share
+        self._lineFound = lineFound
 
         # Shares for IMU data
         self._imuMode = imuMode
@@ -427,21 +431,40 @@ class task_user:
                 self._state = S0_PROMPT
 
 
-
             # -----------------------
             # S10_State_Estimation: State Estimation Test
             # -----------------------
             elif self._state == S10_STATE_ESTIMATION:
-                gc.collect()
-                import ui_competition
-                yield from ui_competition.run(self)
-                del sys.modules['ui_competition']
-                del ui_competition
-                gc.collect()
+                self._competitionGoFlag.put(1)
+                self._ser.write("Line Following Started. Please Press Enter to Stop.\r\n")
+
+                while True:
+                    if self._competitionGoFlag.get() == 0:
+                        break
+
+                    self._ser.write(f"d: {self._observerCenterDistance.get()}, s: {self._lineFollowSetPoint.get():.2f}, f:{"TRUE" if self._lineFound.get() else "FALSE"}, c: {self._lineCentroid.get():.2f} \r\n")
+
+                    if self._ser.any():
+                        inChar = self._ser.read(1).decode()
+                        if inChar in {"\r", "\n"}:
+                            # Clear any remaining input then exit help
+                            while self._ser.any():
+                                self._ser.read(1)
+                            break
+                    yield 0
+
+                # Stop line-following mode and related tasks before returning.
+                self._ser.write(f"{CSV_END}\r\n")
+
+                self._competitionGoFlag.put(0)
+                self._lineFollowGo.put(0)
+                self._reflectanceMode.put(0)
+                self._imuMode.put(0)
+                self._leftMotorGo.put(0)
+                self._rightMotorGo.put(0)
+                self._leftMotorSetPoint.put(0)
+                self._rightMotorSetPoint.put(0)
                 self._state = S0_PROMPT
-
-
-
 
             # Yield the current state per scheduler convention
             yield self._state
