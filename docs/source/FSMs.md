@@ -2,6 +2,17 @@
 
 This project uses Finite State Machines (FSMs) implemented as Python generators operating within a cooperative scheduler. Each task's `run()` method yields the current state, allowing the scheduler to manage execution context.
 
+## Summary & Interaction
+
+- **[task_user](#1-user-interface-task-task_userpy)**: Command hub; enables/disables other tasks
+- **[task_motor](#2-motor-control-task-task_motorpy)**: Two instances (left/right); controlled by goFlag from task_user or task_competition
+- **[task_observer](#3-observerstate-estimator-task-task_observerpy)**: Provides center distance used by task_competition for segment tracking
+- **[task_reflectance](#4-reflectance-sensor-task-task_reflectancepy)**: Provides centroid & line_found used by task_line_follow and task_competition
+- **[task_line_follow](#5-line-following-task-task_line_followpy)**: Steers motors based on centroid; gains & setpoint set by task_user or task_competition
+- **[task_imu](#6-imu-task-task_imupy)**: Provides heading used for rotation tracking; calibration managed via task_user
+- **[task_ultrasonic](#7-ultrasonic-distance-task-task_ultrasonicpy)**: Provides distance; monitored by task_competition during S5 (garage approach)
+- **[task_competition](#8-competition-course-task-task_competitionpy)**: Orchestrates entire race; controls setpoints, enables/disables subsystems per segment
+
 ---
 
 ## 1. User Interface Task (`task_user.py`)
@@ -266,6 +277,7 @@ State 0 (Idle) ↔ State 1 (Running)
    - Computes output (steering correction in mm/s)
    - Calls callback with output value
 3. **Apply Output** — Callback `_plant_cb(output)` sets motor speeds:
+
    ```
    left_speed = nominalSetPoint + output
    right_speed = nominalSetPoint - output
@@ -588,11 +600,13 @@ segmentDistance = observerCenterDistance.get() - _centerStartDist
 **Ultrasonic Control:**
 
 - If distance 20–100 mm:
+
   ```
   setpoint = 2.5 × distance + 50
   ```
 
   - Slow approach as distance decreases
+
 - If distance < 5 mm:
   - Start rotation to find exit line
   - Set motors: `left = -75`, `right = +75` (CCW rotation)
@@ -751,14 +765,3 @@ At each state transition, `_centerStartDist` is updated to the current center di
 | Line Follower | 0   | 1   | varies     |
 
 ---
-
-## Summary & Interaction
-
-- **task_user**: Command hub; enables/disables other tasks
-- **task_motor**: Two instances (left/right); controlled by goFlag from task_user or task_competition
-- **task_observer**: Provides center distance used by task_competition for segment tracking
-- **task_reflectance**: Provides centroid & line_found used by task_line_follow and task_competition
-- **task_line_follow**: Steers motors based on centroid; gains & setpoint set by task_user or task_competition
-- **task_imu**: Provides heading used for rotation tracking; calibration managed via task_user
-- **task_ultrasonic**: Provides distance; monitored by task_competition during S5 (garage approach)
-- **task_competition**: Orchestrates entire race; controls setpoints, enables/disables subsystems per segment
