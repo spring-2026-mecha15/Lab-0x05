@@ -324,8 +324,8 @@ task_list.append(Task(lineFollowTask.run, name="Line Follow Task",
                       priority=2, period=40, profile=False))
 task_list.append(Task(reflectanceTask.run, name="Refl. Sensor Task",
                       priority=3, period=30, profile=False))
-#task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
-#                      priority=4, period=100, profile=True))
+task_list.append(Task(ultrasonicTask.run, name="Ultrasonic Task",
+                      priority=4, period=100, profile=True))
 task_list.append(Task(leftMotorTask.run, name="Left Mot. Task",
                       priority=5, period=50, profile=False))
 task_list.append(Task(rightMotorTask.run, name="Right Mot. Task",
