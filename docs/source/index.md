@@ -16,7 +16,8 @@ and a model-based state observer to navigate a competition course at speed.
 :maxdepth: 2
 :caption: Report
 
-template
+home
+FSMs
 ```
 
 ```{toctree}
