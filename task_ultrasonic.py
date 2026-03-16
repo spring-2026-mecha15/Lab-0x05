@@ -11,6 +11,9 @@ class task_ultrasonic:
         self._sensor.enable_filter(3)
 
     def run(self):
+        """
+        Cooperative function for scheduler
+        """
         while True:
             self._sensor.loop()
 

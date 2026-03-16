@@ -127,6 +127,9 @@ class task_imu:
         return self._save_tare_only()
 
     def run(self):
+        """
+        Cooperative task for scheduler
+        """
         while True:
             if self._state == S0_BEGIN:
                 # Begin sensor (contains cooperative delays)

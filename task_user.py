@@ -196,12 +196,9 @@ class task_user:
         return True
 
     def run(self):
-        # Generator for the task's behavior.
-
-        # Yields:
-        #     current state (int) at the end of each loop iteration so the
-        #     cooperative scheduler can manage it.
-        
+        """
+        Cooperative function for scheduler
+        """
         while True:
 
             # -----------------------

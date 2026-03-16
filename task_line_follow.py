@@ -101,7 +101,9 @@ class task_line_follow:
         return True
 
     def run(self):
-        """Track previous goflag state to determine when flag was just set"""
+        """
+        Cooperative task for scheduler
+        """
         while True:
             if self._state == 0:
                 if self._goFlag.get():

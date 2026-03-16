@@ -110,6 +110,9 @@ class task_observer:
         self._update_y(self._C, self.x_hat, self.y_hat)
 
     def run(self):
+        """
+        Cooperative function for scheduler
+        """
         while True:
             # if self._state == S0_IDLE:
             #     if self._goFlag.get():

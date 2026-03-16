@@ -38,6 +38,9 @@ class task_reflectance:
         print("Reflectance sensor instantiated")
 
     def run(self):
+        """
+        Cooperative function for scheduler
+        """
         while True:
             if self._state == S0_IDLE:
                 mode = self._mode.get()
