@@ -56,7 +56,7 @@ S8_CROSS_DIST      = 100    # TBD: LF distance before cross detected in S8 (mm)
 S11_CUP_PUSH_DIST  = 450    # Distance to drive forward to push cup (mm)
 S11_REVERSE_DIST   = 450    # Distance to reverse after cup push (mm)
 
-S13_FORWARD_DIST   = 1600   # TBD: short LF distance to clear right corner in S13 (mm)
+S13_FORWARD_DIST   = 1800   # TBD: short LF distance to clear right corner in S13 (mm)
 S14_DIST           = 800    # TBD: slalom LF distance before transitioning to S15 (mm)
 
 S15_DIST           = 157    # TBD: R150 feed-forward arc distance (mm)
@@ -155,13 +155,13 @@ class task_competition:
                     self._reflectanceMode.put(3)
                     self._velocity = LEG_1_START_VEL
 
-                    # self._lineFollowSetPoint.put(50)
-                    # self._observerGoFlag.put(1)
-                    # self._leftMotorGo.put(1)
-                    # self._rightMotorGo.put(1)
-                    # self._lineFollowGo.put(1)
-                    # self._lineFollowKff.put(0)
-                    # self._state = S1
+                    self._lineFollowSetPoint.put(50)
+                    self._observerGoFlag.put(1)
+                    self._leftMotorGo.put(1)
+                    self._rightMotorGo.put(1)
+                    self._lineFollowGo.put(1)
+                    self._lineFollowKff.put(0)
+                    self._state = S1
 
                     # self._lineFollowGo.put(1)
                     # self._rightMotorGo.put(1)
@@ -186,12 +186,12 @@ class task_competition:
                     # self._lineFollowKff.put(0)
                     # self._state = S6
 
-                    self._lineFollowGo.put(1)
-                    self._rightMotorGo.put(1)
-                    self._leftMotorGo.put(1)
-                    # self._lineFollowSetPoint.put(LEG_1_END_VEL)
-                    self._lineFollowKff.put(0)
-                    self._state = S8 # PUT BACK WHEN DONE TESTING
+                    # self._lineFollowGo.put(1)
+                    # self._rightMotorGo.put(1)
+                    # self._leftMotorGo.put(1)
+                    # # self._lineFollowSetPoint.put(LEG_1_END_VEL)
+                    # self._lineFollowKff.put(0)
+                    # self._state = S8 # PUT BACK WHEN DONE TESTING
 
             # Accelerate to top speed then decelerate before short radius
             elif self._state == S1:
