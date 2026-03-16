@@ -324,9 +324,11 @@ class task_user:
             # S3_GAINS: prompt for motor and line following Kp and Ki (uses multichar_input)
             # -----------------------
             elif self._state == S3_GAINS:
+                gc.collect()
                 import ui_gains
                 yield from ui_gains.run(self)
                 del sys.modules['ui_gains']
+                del ui_gains
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -334,9 +336,11 @@ class task_user:
             # S4_SETPOINT: prompt for setpoints (uses multichar_input)
             # -----------------------
             elif self._state == S4_SETPOINT:
+                gc.collect()
                 import ui_setpoint
                 yield from ui_setpoint.run(self)
                 del sys.modules['ui_setpoint']
+                del ui_setpoint
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -378,9 +382,11 @@ class task_user:
             # S6_DEBUG: debug state
             # -----------------------
             elif self._state == S6_DEBUG:
+                gc.collect()
                 import ui_debug
                 yield from ui_debug.run(self)
                 del sys.modules['ui_debug']
+                del ui_debug
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -388,9 +394,11 @@ class task_user:
             # S7_CALIBRATE: calibration state
             # -----------------------
             elif self._state == S7_CALIBRATION:
+                gc.collect()
                 import ui_calibration
                 yield from ui_calibration.run(self)
                 del sys.modules['ui_calibration']
+                del ui_calibration
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -398,9 +406,11 @@ class task_user:
             # S8_LINEFOLLOW: Line Following State
             # -----------------------
             elif self._state == S8_LINEFOLLOW:
+                gc.collect()
                 import ui_linefollow
                 yield from ui_linefollow.run(self)
                 del sys.modules['ui_linefollow']
+                del ui_linefollow
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -408,9 +418,11 @@ class task_user:
             # S9_IMU_Menue: Line Following State
             # -----------------------
             elif self._state == S9_IMU_MENU:
+                gc.collect()
                 import ui_imu
                 yield from ui_imu.run(self)
                 del sys.modules['ui_imu']
+                del ui_imu
                 gc.collect()
                 self._state = S0_PROMPT
 
@@ -420,9 +432,11 @@ class task_user:
             # S10_State_Estimation: State Estimation Test
             # -----------------------
             elif self._state == S10_STATE_ESTIMATION:
+                gc.collect()
                 import ui_competition
                 yield from ui_competition.run(self)
                 del sys.modules['ui_competition']
+                del ui_competition
                 gc.collect()
                 self._state = S0_PROMPT
 

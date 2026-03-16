@@ -2,7 +2,25 @@ from micropython import const
 from task_share import Share
 from array import array
 
-from constants import A_D, B_D, C_D
+
+_A_D = (
+     0.3799498,  0.0000000,  0.3486384,  0.3486384,
+     0.0000000,  0.0000029,  0.0000000,  0.0000000,
+    -0.1693591,  0.0000000,  0.1102907,  0.1102815,
+    -0.1693591,  0.0000000,  0.1102815,  0.1102907,
+)
+_B_D = (
+     0.8657503,  0.8657503,  0.3100251,  0.3100251,  0.0000000,  0.0000000,
+     0.0000000,  0.0000000, -0.0071421,  0.0071421,  0.0001020,  0.0039210,
+     1.1426413,  0.8415850,  0.0846795,  0.0846795,  0.0000000, -1.8274565,
+     0.8415850,  1.1426413,  0.0846795,  0.0846795,  0.0000000,  1.8274565,
+)
+_C_D = (
+     1.0000000, -70.0000000,  0.0,        0.0,
+     1.0000000,  70.0000000,  0.0,        0.0,
+     0.0,         1.0000000,  0.0,        0.0,
+     0.0,         0.0,       -0.2500000,  0.2500000,
+)
 
 S0_IDLE = const(0)
 S1_RUN  = const(1)
@@ -36,11 +54,10 @@ class task_observer:
         self.psi = heading
         self.psi_dot = headingRate
 
-        # Flatten constant matrices into tuples for zero-allocation row access.
-        # A_D is 4x4, B_D is 4x6, C_D is 4x4.
-        self._A = tuple(v for row in A_D for v in row)  # length 16
-        self._B = tuple(v for row in B_D for v in row)  # length 24
-        self._C = tuple(v for row in C_D for v in row)  # length 16
+        # Reference module-level flat tuples — no conversion cost at instantiation.
+        self._A = _A_D  # 4x4, length 16
+        self._B = _B_D  # 4x6, length 24
+        self._C = _C_D  # 4x4, length 16
 
         # State vectors as mutable float arrays — reused in place every cycle,
         # so no heap allocation occurs in the 50 Hz hot path.
