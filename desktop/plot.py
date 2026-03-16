@@ -1,20 +1,36 @@
+"""
+Plot two-column CSV data using matplotlib.
+
+Author: Gabe Haarberg
+Date:   Feb 20, 2026
+
+Reads one or more CSV files and produces individual subplots for each,
+with an optional combined overlay. Malformed lines are handled gracefully
+and reported to the terminal. Output is saved as results.png.
+"""
+
 from matplotlib import pyplot
 from matplotlib.gridspec import GridSpec
 import os
 import math
 
-############################################################################
-# Author: Gabe Haarberg                                                    #
-# Date:   Feb 20, 2026                                                     #
-# File:   main.py                                                          #
-#                                                                          #
-# Description:                                                             #
-#  A script that plots two columns of data from a local csv file           #
-#  using matplotlib. Columns with improperly formatted data are            #
-#  handled and alerted to the user via the terminal.                       #
-############################################################################
-
 def plot_csv(filenames: list[str], include_combined: bool = True):
+    """
+    Plot time-series data from a list of two-column CSV files.
+
+    Each CSV is expected to have a header row followed by rows of
+    (time, value) pairs. Malformed lines are skipped with a warning.
+    Individual subplots are created for every file. When include_combined
+    is True, an additional overlay subplot at the top shows all series
+    together. The figure is saved as results.png in the same directory as
+    the first file and then displayed interactively.
+
+    Args:
+        filenames (list[str]): Paths to CSV files, each with a time column
+            and a data column.
+        include_combined (bool): If True, prepend a combined overlay subplot
+            that plots all files on a single set of axes. Defaults to True.
+    """
     # Create figure with optional combined overlay + individual plots.
     num_files = len(filenames)
     individual_cols = max(1, min(3, math.ceil(math.sqrt(num_files))))

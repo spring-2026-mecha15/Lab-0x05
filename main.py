@@ -1,8 +1,13 @@
-# Main control loop for dual-motor closed-loop control system.
+"""
+MicroPython entry point for the Romi robot.
 
-# This module initializes hardware drivers, communication channels, and tasks
-# for controlling two motors with encoders. It runs a real-time scheduler
-# that coordinates motor control and user interface tasks.
+Initializes hardware (motors, encoders, reflectance sensor, IMU, and
+ultrasonic sensor), creates inter-task Shares and Queues for communication,
+instantiates all task objects, and registers them with the cotask cooperative
+scheduler. The priority scheduler runs in a loop until Ctrl-C is pressed,
+at which point shutdown_system() safely disables motors and deinitializes
+timers.
+"""
 
 # ============================================================================
 # IMPORTS

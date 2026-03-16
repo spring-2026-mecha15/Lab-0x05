@@ -133,7 +133,8 @@ class Encoder:
         Compute linear velocity (mm/s) using the most recent `delta` and `dt`.
 
         Returns 0 if dt is zero (to avoid division by zero). The computation
-        follows:
+        follows::
+
             counts_per_ms = delta / dt
             rotations_per_s = (counts_per_ms * 1000) / ECOUNTS_PER_WREV
             velocity_mm_s = rotations_per_s * (2 * pi * wheel_radius)

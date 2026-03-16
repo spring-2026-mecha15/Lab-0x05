@@ -1,3 +1,16 @@
+"""
+task_motor.py
+
+Cooperative task that wraps a PIController around a single Motor/Encoder pair
+on the Romi robot.  Multiple instances are created (one per wheel) and run by
+the cooperative scheduler.
+
+States:
+    S0_INIT (0): One-shot initialization; transitions immediately to S1_WAIT.
+    S1_WAIT (1): Waits for the go flag to be set before enabling the motor.
+    S2_RUN  (2): Runs closed-loop PI velocity control; transitions back to S1_WAIT when the go flag is cleared.
+"""
+
 from drivers.motor import Motor
 from drivers.encoder import Encoder
 from task_share   import Share, Queue
@@ -16,28 +29,46 @@ S2_RUN  = micropython.const(2) # State 2 - run closed loop control
 
 
 class task_motor:
-    # A class that represents a motor task. The task is responsible for reading
-    # data from an encoder, performing closed loop control, and actuating a motor.
-    # Multiple objects of this class can be created to work with multiple motors
-    # and encoders.
-    
+    """
+    Cooperative scheduler task for closed-loop velocity control of one motor.
+
+    Each instance owns a Motor, an Encoder, and a PIController.  The task
+    reads the encoder velocity, computes a PI correction, and drives the motor
+    accordingly.  Instantiate once per wheel (left and right).
+    """
 
     def __init__(self,
                  mot: Motor, enc: Encoder,
                  goFlag: Share, kpVal: Share, kiVal: Share, setpoint: Share,
                  dataValues: Queue, timeValues: Queue, wheelDistance: Share, motorVoltage: Share, motorAngVelocity: Share):
-        # Initializes a motor task object
-        
-        # Args:
-        #     mot (motor_driver): A motor driver object
-        #     enc (encoder):      An encoder object
-        #     goFlag (Share):     A share object representing a boolean flag to
-        #                         start data collection
-        #     dataValues (Queue): A queue object used to store collected encoder
-        #                         position values
-        #     timeValues (Queue): A queue object used to store the time stamps
-        #                         associated with the collected encoder data
-        
+        """
+        Initialize the motor task.
+
+        Args:
+            mot (Motor):                  Motor driver object used to set effort.
+            enc (Encoder):                Encoder object used to read wheel
+                                          position and velocity.
+            goFlag (Share):               Integer flag; 0 = stop, 1 = run,
+                                          2 = run with profiling data capture.
+            kpVal (Share):                Proportional gain for the PI controller,
+                                          readable and writable from the UI.
+            kiVal (Share):                Integral gain for the PI controller,
+                                          readable and writable from the UI.
+            setpoint (Share):             Velocity setpoint (mm/s) written by the
+                                          line-follow task or the UI.
+            dataValues (Queue):           Queue for logging encoder velocity
+                                          samples during profiling runs.
+            timeValues (Queue):           Queue for logging timestamps (ms)
+                                          corresponding to each velocity sample.
+            wheelDistance (Share):        Cumulative wheel travel (encoder counts)
+                                          reported to the observer task.
+            motorVoltage (Share):         Commanded motor voltage (V) reported for
+                                          telemetry and the UI.
+            motorAngVelocity (Share):     Wheel angular velocity (rad/s) derived
+                                          from the encoder and reported for
+                                          telemetry.
+        """
+
 
         self._state: int        = S0_INIT    # The present state of the task       
         
@@ -91,13 +122,33 @@ class task_motor:
         print("Motor Task object instantiated")
 
     def _apply_effort(self, effort_pct):
+        """
+        Actuator callback invoked by PIController with the computed effort.
 
+        Converts the percent effort to an equivalent voltage assuming a 6.5 V
+        supply, writes the result to the motorVoltage share for telemetry, then
+        forwards the raw percent value to the motor driver.
+
+        Args:
+            effort_pct (float): Desired motor effort in percent (-100 to 100).
+        """
         motor_voltage = (effort_pct / 100.0) * 6.5
         self._motorVoltage.put(motor_voltage)
         
         self._mot.set_effort(effort_pct)
 
     def _load_gains(self) -> bool:
+        """
+        Read motor PI gains from the JSON gains file.
+
+        Attempts to open GAINS_FILE and parse the ``motor`` section.  If a
+        value for ``kp`` or ``ki`` is present it is written to the corresponding
+        Share; otherwise the compile-time default constant is used instead.
+
+        Returns:
+            bool: True if the file was read and parsed successfully, False if the
+                  file could not be opened or contained invalid JSON.
+        """
         try:
             with open(GAINS_FILE, "r") as gains_file:
                 data = json.load(gains_file)

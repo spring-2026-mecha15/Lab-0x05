@@ -1,3 +1,17 @@
+"""
+task_reflectance.py
+
+Cooperative scheduler task that wraps the Reflectance_Sensor driver.
+The task progresses through four states driven by the reflectanceMode share:
+
+  - S0_IDLE:        Wait for a mode command.
+  - S1_CALIB_DARK:  Run the dark-surface calibration sequence.
+  - S2_CALIB_LIGHT: Run the light-surface calibration sequence.
+  - S3_RUN:         Continuously read the sensor, publish the line centroid
+                    and line-found flag to shares, and log centroid + elapsed
+                    time to queues.
+"""
+
 from task_share import Share, Queue
 from drivers.reflectance import Reflectance_Sensor
 import micropython
@@ -9,6 +23,11 @@ S2_CALIB_LIGHT = micropython.const(2)
 S3_RUN         = micropython.const(3)
 
 class task_reflectance:
+    """
+    Scheduler task that controls the reflectance sensor through calibration
+    and line-following states.
+    """
+
     def __init__(
             self,
             reflectanceSensor: Reflectance_Sensor,
@@ -18,6 +37,26 @@ class task_reflectance:
             centroidValues: Queue,
             centroidTimeValues: Queue
         ):
+        """
+        Initialize the reflectance task.
+
+        Parameters
+        ----------
+        reflectanceSensor : Reflectance_Sensor
+            Instantiated reflectance sensor driver.
+        reflectanceMode : Share
+            Command share that selects the operating mode:
+            0 = idle, 1 = calibrate dark, 2 = calibrate light, 3 = run.
+        lineCentroid : Share
+            Output share for the computed line centroid position.
+        lineFound : Share
+            Output share that is True when a line is detected.
+        centroidValues : Queue
+            Queue for logging centroid values over time.
+        centroidTimeValues : Queue
+            Queue for logging timestamps (ms from run start) paired with
+            centroid values.
+        """
         
         self._state = 0
 

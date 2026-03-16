@@ -1,3 +1,25 @@
+"""
+task_imu.py
+
+Cooperative scheduler task that manages the BNO055 IMU sensor.
+The task moves through the following states:
+
+  - S0_BEGIN:          Initialize the IMU and attempt to restore a saved
+                       calibration from flash.
+  - S1_CALIBRATE:      Wait until all subsystems reach full calibration,
+                       then save offsets to flash.
+  - S2_IDLE:           Dispatch mode commands (load/save calibration, tare,
+                       read values, get calibration status, or run NDOF).
+  - S3_RUN_NDOF:       Read heading and heading-rate from the IMU and publish
+                       them to shares, then return to idle.
+  - S4_SAVE_CALIB:     Persist current calibration offsets and tare values.
+  - S5_LOAD_CALIB:     Restore calibration offsets and tare values from flash.
+  - S6_TARE:           Collect accelerometer/gyro tare samples and save them.
+  - S7_READ_VALS:      Perform a one-shot read of heading and heading-rate.
+  - S8_GET_CALIB_STATE: Pack calibration sub-system statuses into a single
+                        byte and publish it to a share.
+"""
+
 from task_share import Share
 from micropython import const
 from drivers.imu import BNO055, NDOF_OP_MODE
@@ -20,9 +42,36 @@ S7_READ_VALS  = const(7)
 S8_GET_CALIB_STATE = const(8)
 
 class task_imu:
+    """
+    Scheduler task that initializes, calibrates, and reads the BNO055 IMU.
+    Heading and heading-rate are published to shared variables for use by
+    other tasks (e.g., closed-loop motor control).
+    """
+
     def __init__(self, imuSensor: BNO055, mode: Share, calibration: Share,
                  heading: Share, headingRate: Share
                  ):
+        """
+        Initialize the IMU task.
+
+        Parameters
+        ----------
+        imuSensor : BNO055
+            Instantiated BNO055 driver.
+        mode : Share
+            Command share that selects the operating mode:
+            0 = idle, 1 = load calibration, 2 = save calibration,
+            3 = tare, 4 = read values, 5 = get calibration status,
+            0xFF = run NDOF (continuous heading updates).
+        calibration : Share
+            Output share for the packed calibration status byte
+            (sys[7:6] | gyro[5:4] | accel[3:2] | mag[1:0]).
+        heading : Share
+            Output share for the current Euler heading angle (degrees).
+        headingRate : Share
+            Output share for the current yaw rate from the gyroscope
+            (degrees per second).
+        """
 
         self._mode = mode
         self._calibration = calibration
@@ -40,6 +89,15 @@ class task_imu:
         self._state = S0_BEGIN
 
     def _read_imu_file(self):
+        """
+        Read and parse the IMU JSON file from flash.
+
+        Returns
+        -------
+        dict
+            Parsed file contents, or an empty dict if the file is missing
+            or contains invalid JSON.
+        """
         try:
             with open(IMU_FILE, "r") as gains_file:
                 data = json.load(gains_file)
@@ -52,6 +110,19 @@ class task_imu:
         return data
 
     def _write_imu_file(self, data):
+        """
+        Serialize and write data to the IMU JSON file on flash.
+
+        Parameters
+        ----------
+        data : dict
+            Data to serialize and persist.
+
+        Returns
+        -------
+        bool
+            True on success, False if an OSError occurs during the write.
+        """
         try:
             with open(IMU_FILE, "w") as gains_file:
                 json.dump(data, gains_file)
@@ -60,6 +131,17 @@ class task_imu:
         return True
 
     def _save_calibration(self):
+        """
+        Retrieve current calibration offsets and tare values from the IMU,
+        then persist them to the IMU JSON file.
+
+        This is a generator method; use ``yield from _save_calibration()``.
+
+        Returns
+        -------
+        bool
+            True if the file was written successfully, False otherwise.
+        """
         offsets = yield from self._imu.get_calibration_offsets()
         accel_tare, gyro_tare = self._imu.get_tare()
 
@@ -76,6 +158,15 @@ class task_imu:
         return self._write_imu_file(data)
 
     def _save_tare_only(self):
+        """
+        Persist only the current tare values (accelerometer and gyroscope)
+        to the IMU JSON file, leaving any stored calibration offsets intact.
+
+        Returns
+        -------
+        bool
+            True if the file was written successfully, False otherwise.
+        """
         accel_tare, gyro_tare = self._imu.get_tare()
 
         data = self._read_imu_file()
@@ -89,6 +180,19 @@ class task_imu:
         return self._write_imu_file(data)
 
     def _load_calibration(self):
+        """
+        Load calibration offsets and tare values from the IMU JSON file and
+        apply them to the sensor.
+
+        This is a generator method; use ``yield from _load_calibration()``.
+
+        Returns
+        -------
+        bool
+            True if valid 22-byte calibration offsets were found and applied,
+            False if the file is missing, malformed, or the offset payload is
+            the wrong length.
+        """
         data = self._read_imu_file()
 
         imu_data = data.get("imu", {}) if isinstance(data, dict) else {}
@@ -119,10 +223,38 @@ class task_imu:
         return True
 
     def tare_accel_gyro(self, sample_count=100, sample_delay_ms=5):
+        """
+        Collect tare samples from the accelerometer and gyroscope, then
+        save the resulting tare offsets to flash.
+
+        This is a generator method; use ``yield from tare_accel_gyro()``.
+
+        Parameters
+        ----------
+        sample_count : int, optional
+            Number of samples to average for the tare (default 100).
+        sample_delay_ms : int, optional
+            Delay in milliseconds between samples (default 5).
+
+        Returns
+        -------
+        bool
+            True if the tare values were saved successfully, False otherwise.
+        """
         yield from self._imu.tare_accel_gyro(sample_count=sample_count, sample_delay_ms=sample_delay_ms)
         return self._save_tare_only()
 
     def clear_tare(self):
+        """
+        Reset the IMU tare offsets to zero and persist the cleared values
+        to flash.
+
+        Returns
+        -------
+        bool
+            True if the updated tare values were saved successfully,
+            False otherwise.
+        """
         self._imu.clear_tare()
         return self._save_tare_only()
 

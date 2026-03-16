@@ -81,8 +81,7 @@ class PIController:
         """
         Set feed-forward setpoint and gain.
 
-        Feed-forward effort is computed as:
-            ff_term = gain * setpoint
+        Feed-forward effort is computed as ``ff_term = gain * setpoint``
         and is added to the PI effort before saturation.
         """
         self._ff_setpoint = setpoint

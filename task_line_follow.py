@@ -1,3 +1,12 @@
+"""
+task_line_follow.py
+
+Cooperative task that runs a PI controller to keep a line centered under the
+Romi robot.  The centroid reported by the reflectance sensor is used as the
+feedback signal.  The controller output is applied as a differential speed
+offset to the left and right motors so that the robot steers toward the line.
+"""
+
 from task_share import Share
 from controller import PIController
 try:
@@ -7,6 +16,13 @@ except ImportError:
 from constants import GAINS_FILE, DEFAULT_LF_KP, DEFAULT_LF_KI, DEFAULT_LF_KFF
 
 class task_line_follow:
+    """
+    Cooperative scheduler task for line following on a differential-drive Romi.
+
+    A PIController tracks the line centroid (feedback) and outputs a speed
+    correction that is added to the nominal forward velocity on one wheel and
+    subtracted from the other, steering the robot back onto the line.
+    """
     def __init__(
             self,
             lineFollowGo:       Share,
@@ -18,7 +34,27 @@ class task_line_follow:
             rightMotorSetPoint: Share,
             leftMotorSetPoint:  Share
         ):
-        
+        """
+        Initialize the line-follow task.
+
+        Args:
+            lineFollowGo (Share):       Boolean flag; task runs PI control while
+                                        this share is non-zero.
+            lineFollowSetPoint (Share): Nominal forward speed setpoint (mm/s)
+                                        shared with the UI.
+            lineFollowKp (Share):       Proportional gain for the PI controller,
+                                        readable and writable from the UI.
+            lineFollowKi (Share):       Integral gain for the PI controller,
+                                        readable and writable from the UI.
+            lineCentroid (Share):       Centroid of the detected line (mm),
+                                        produced by the reflectance sensor task.
+            lineFollowKff (Share):      Feed-forward gain applied to compensate
+                                        for steady-state curvature.
+            rightMotorSetPoint (Share): Speed setpoint written to the right motor
+                                        task (mm/s).
+            leftMotorSetPoint (Share):  Speed setpoint written to the left motor
+                                        task (mm/s).
+        """
         self._state               = 0
 
         self._goFlag              = lineFollowGo
@@ -61,6 +97,17 @@ class task_line_follow:
         print("Line follower task instantiated")
 
     def _load_gains(self) -> bool:
+        """
+        Read line-follower PI gains and setpoint from the JSON gains file.
+
+        Attempts to open GAINS_FILE and parse the ``line_follower`` section.
+        Each parameter (kp, ki, kff, set_point) is written to its corresponding
+        Share if present; otherwise the compile-time default constant is used.
+
+        Returns:
+            bool: True if the file was read and parsed successfully, False if the
+                  file could not be opened or contained invalid JSON.
+        """
         try:
             with open(GAINS_FILE, "r") as gains_file:
                 data = json.load(gains_file)
@@ -137,5 +184,17 @@ class task_line_follow:
             yield self._state
 
     def _plant_cb(self, value):
+        """
+        Callback invoked by PIController with the computed correction output.
+
+        Applies a differential speed offset to steer the robot toward the line.
+        The left motor receives ``nominal + value`` and the right motor receives
+        ``nominal - value``, so a positive correction turns the robot right and
+        a negative correction turns it left.
+
+        Args:
+            value (float): Controller output (mm/s correction) bounded by the
+                           controller's saturation limits.
+        """
         self._leftMotorSetPoint.put(self._nominalSetPoint + value)
         self._rightMotorSetPoint.put(self._nominalSetPoint - value)

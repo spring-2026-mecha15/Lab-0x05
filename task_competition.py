@@ -1,23 +1,31 @@
+"""
+task_competition.py
+
+Cooperative scheduler task that drives a Romi robot through a multi-leg
+line-following competition course. Manages state transitions, motor commands,
+and sensor arbitration across all course segments from start to finish.
+"""
+
 from micropython import const
 from task_share import Share
 from utime import ticks_ms, ticks_diff
 import gc
 
-S0 = const(0)
-S1 = const(1)
-S2 = const(2)
-S3 = const(3)
-S4 = const(4)
-S5 = const(5)
-S6 = const(6)
-S7 = const(7)
-S8 = const(8)
-S9 = const(9)
-S10 = const(10)
-S11 = const(11)
-S12 = const(12)
-S13 = const(13)
-S14 = const(14)
+S0  = const(0)   # Idle — wait for go flag before starting the run
+S1  = const(1)   # Accelerate then decelerate along the first straight leg while line following
+S2  = const(2)   # Follow short-radius arc until the line is lost (end of first straight)
+S3  = const(3)   # Continue arc at R=200mm for a fixed distance toward garage entrance
+S4  = const(4)   # Switch to tighter arc (R=125mm) to navigate into the garage area
+S5  = const(5)   # Approach wall, slowing on ultrasonic distance, then begin CCW rotation when close
+S6  = const(6)   # Rotate CCW until line is reacquired near center
+S7  = const(7)   # Follow line past cross-point, then initiate sharp right turn when line is lost
+S8  = const(8)   # Execute sharp right turn (R=30mm) until line is recovered
+S9  = const(9)   # Follow line for long distance past checkpoint 4, then initiate U-turn
+S10 = const(10)  # Execute U-turn arc (R=-50mm), then drive straight to recover line
+S11 = const(11)  # Resume line following once line is reacquired, with feed-forward gain
+S12 = const(12)  # Follow line until lost, then arc at R=200mm to face checkpoint 5
+S13 = const(13)  # Move straight forward toward checkpoint 5 for a short distance
+S14 = const(14)  # Move forward then end the competition run
 
 ACCELERATION = 500  # Acceleration in mm/s^2
 
@@ -45,22 +53,27 @@ def wheel_speeds(radius_mm, center_speed_mms, half_track=70.5):
             center_speed_mms * (radius_mm - half_track) / radius_mm)
 
 class task_competition:
+    """
+    Cooperative scheduler task that sequences the Romi robot through each leg
+    of the competition course using a finite state machine.
+    """
+
     def __init__(self,
-            competitionGo:           Share,
-            lineFollowGo:            Share,
-            lineFollowSetPoint:      Share,
-            lineFound:               Share,
-            lineFollowKff:           Share,
-            lineCentroid:            Share,
-            observerGoFlag:          Share,
-            reflectanceMode:         Share,
-            observerCenterDistance:  Share,
-            observerHeading:         Share,
-            leftMotorGo:             Share,
-            leftMotorSetPoint:       Share,
-            rightMotorGo:            Share,
-            rightMotorSetPoint:      Share,
-            ultrasonicDistance:      Share,
+            competitionGo:           Share,  # Flag set by user to start/stop the run
+            lineFollowGo:            Share,  # Enable flag for the line-follow PID task
+            lineFollowSetPoint:      Share,  # Target forward speed (mm/s) for line following
+            lineFound:               Share,  # True when the reflectance array detects the line
+            lineFollowKff:           Share,  # Feed-forward gain injected into the line-follow controller
+            lineCentroid:            Share,  # Normalised lateral centroid of the detected line (-1 to 1)
+            observerGoFlag:          Share,  # Enable flag for the odometry/observer task
+            reflectanceMode:         Share,  # Operating mode selector for the reflectance sensor task
+            observerCenterDistance:  Share,  # Cumulative distance travelled by robot center (mm)
+            observerHeading:         Share,  # Current robot heading estimate (radians)
+            leftMotorGo:             Share,  # Enable flag for the left motor controller
+            leftMotorSetPoint:       Share,  # Left wheel speed set-point (mm/s)
+            rightMotorGo:            Share,  # Enable flag for the right motor controller
+            rightMotorSetPoint:      Share,  # Right wheel speed set-point (mm/s)
+            ultrasonicDistance:      Share,  # Latest ultrasonic range reading (cm)
         ):
         
         self._goFlag = competitionGo
@@ -228,7 +241,7 @@ class task_competition:
                     self._rightMotorSetPoint.put(right_speed)
                     self._state = S8
 
-            # Once line is recovered (and near center) resume line following
+            # Enforce tight right arc until line centroid returns near center, then resume line following
             elif self._state == S8:
                 # Enforce rotation in case line following overrode the wheel speeds.
                 left_speed, right_speed = wheel_speeds(30, 25)
@@ -252,14 +265,14 @@ class task_competition:
                     self._rightMotorSetPoint.put(right_speed)
                     self._state = S10
 
-            # After u-turn (based on center distance traveled), move straight to recover line following
+            # After the U-turn arc distance is complete, drive straight until the line is reacquired
             elif self._state == S10:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= S10_DIST:
                     self._leftMotorSetPoint.put(75)
                     self._rightMotorSetPoint.put(75)
                     self._state = S11
 
-            # Resume line following once line is picked back up
+            # Re-enable line following with feed-forward once the sensor reacquires the line
             elif self._state == S11:
                 if self._lineFound.get():
                     self._centerStartDist = self._observerCenterDistance.get()
@@ -280,7 +293,7 @@ class task_competition:
                         self._rightMotorSetPoint.put(right_speed)
                         self._state = S13
 
-            # Once romi is facing CP#5, move forward for a short distance
+            # Arc to checkpoint 5 complete; drive straight forward for S13_DIST before final approach
             elif self._state == S13:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= S13_DIST:
                     self._centerStartDist = self._observerCenterDistance.get()
@@ -288,7 +301,7 @@ class task_competition:
                     self._rightMotorSetPoint.put(50)
                     self._state = S14
 
-            # After distance traveled, end test.
+            # Move forward for S14_DIST then clear the go flag to end the competition run
             elif self._state == S14:
                 if (self._observerCenterDistance.get() - self._centerStartDist) >= S14_DIST:
                     self._goFlag.put(0)
