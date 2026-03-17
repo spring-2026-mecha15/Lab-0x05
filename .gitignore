@@ -17,3 +17,4 @@ docs/build/
 docs/source/api/generated/
 /micropython_sync_tools
 /docs/_build
+test.csv
