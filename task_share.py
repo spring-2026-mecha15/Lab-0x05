@@ -1,25 +1,16 @@
-## @file task_share.py
-#  This file contains classes which allow tasks to share data without the risk
-#  of data corruption by interrupts. 
-#
-#  @author JR Ridgely
-#  @date   2017-Jan-01 JRR Approximate date of creation of file
-#  @date   2021-Dec-18 JRR Docstrings changed to work without DoxyPyPy
-#  @copyright This program is copyright (c) 2017-2023 by JR Ridgely and released
-#             under the GNU Public License, version 3.0. 
-# 
-#  It is intended for educational use only, but its use is not limited thereto.
-#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-#  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-#  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-#  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-#  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-#  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-#  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-#  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-#  POSSIBILITY OF SUCH DAMAGE.
+"""
+Interrupt-safe inter-task data sharing for MicroPython.
+
+Provides :class:`Share` and :class:`Queue` classes that allow tasks to
+exchange data without risk of corruption from interrupts. Shares hold a
+single value; queues provide a FIFO buffer. Both use MicroPython's
+``micropython.schedule`` / IRQ primitives to guarantee atomic access.
+
+:author: JR Ridgely
+:date: 2017-Jan-01 — original creation; 2021-Dec-18 — docstrings updated
+:copyright: Copyright (c) 2017-2023 by JR Ridgely, released under the
+    GNU Public License v3.0. Provided for educational use without warranty.
+"""
 
 import array
 import gc
