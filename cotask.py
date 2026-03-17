@@ -1,31 +1,17 @@
-## @file cotask.py
-#  This file contains classes to run cooperatively scheduled tasks in a
-#  multitasking system.
-#
-#  Tasks are created as generators, functions which have infinite loops and call
-#  @c yield at least once in the loop. References to all the tasks to be run
-#  in the system are kept in a list maintained by class @c CoTaskList; the 
-#  system scheduler then runs the tasks' @c run() methods according to a 
-#  chosen scheduling algorithm such as round-robin or highest-priority-first. 
-# 
-#  @author JR Ridgely
-#  @date   2017-Jan-01 JRR Approximate date of creation of file
-#  @date   2021-Dec-18 JRR Docstrings modified to work without DoxyPyPy
-#  @copyright This program is copyright (c) 2017-2023 by JR Ridgely and
-#             released under the GNU Public License, version 3.0.
-# 
-#  It is intended for educational use only, but its use is not limited thereto.
-#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-#  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-#  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-#  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-#  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-#  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-#  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-#  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-#  POSSIBILITY OF SUCH DAMAGE.
+"""
+Cooperative multitasking scheduler for MicroPython.
+
+Contains classes to run cooperatively scheduled tasks in a multitasking
+system. Tasks are written as generator functions with infinite loops that
+call ``yield`` at least once per iteration. A :class:`CoTaskList` maintains
+references to all active tasks and the scheduler runs each task's
+``run()`` method using round-robin or highest-priority-first scheduling.
+
+:author: JR Ridgely
+:date: 2017-Jan-01 — original creation; 2021-Dec-18 — docstrings updated
+:copyright: Copyright (c) 2017-2023 by JR Ridgely, released under the
+    GNU Public License v3.0. Provided for educational use without warranty.
+"""
 
 import gc                              # Memory allocation garbage collector
 import utime                           # Micropython version of time library

@@ -20,6 +20,7 @@ def run(ui):
     Displays the current value of each setpoint, accepts a new float via
     ``multichar_input``, and writes the result to the appropriate shared
     variable.  If the user presses Enter without typing a value the existing
+    setpoint is left unchanged.
 
     Args:
         ui: UI context object exposing ``_ser``, ``_leftMotorSetPoint``,
