@@ -1,8 +1,42 @@
+"""
+Controller gain tuning wizard for the Romi robot UI.
+
+Steps the user through adjusting five control parameters via the serial
+terminal, then persists all gains to ``GAINS_FILE`` so they survive a
+power cycle.  Uses ``multichar_input`` for non-blocking numeric entry.
+
+Parameters tuned (in order):
+    1. Motor Kp  – proportional gain (must be > 0; same value applied to both motors)
+    2. Motor Ki  – integral gain (must be ≥ 0)
+    3. LF Kp     – line-follower proportional gain (must be ≥ 0)
+    4. LF Ki     – line-follower integral gain (must be ≥ 0)
+    5. LF Kff    – line-follower feed-forward gain (must be ≥ 0)
+"""
 from multichar_input import multichar_input
 from constants import GAINS_FILE
 
 
 def run(ui):
+    """
+    Generator that runs the interactive gain-tuning wizard.
+
+    For each gain the function displays the current value, prompts for a new
+    one, validates the range, and either updates the shared variable or
+    reports why the entry was rejected.  A summary table is printed at the
+    end and all gains are saved to disk.
+
+    Uses ``yield from multichar_input(ui._ser)`` so the scheduler remains
+    responsive while waiting for the user to type a value.
+
+    Args:
+        ui: UI context object exposing ``_ser``, ``_leftMotorKp``,
+            ``_rightMotorKp``, ``_leftMotorKi``, ``_rightMotorKi``,
+            ``_lineFollowKp``, ``_lineFollowKi``, ``_lineFollowKff``
+            shares/queues, and a ``_save_gains()`` method.
+
+    Yields:
+        Delegates to ``multichar_input`` which yields on every serial poll.
+    """
     # Prompt and read new motor Kp (assumes same gain for L/R)
     ui._ser.write(
         f"Current motor Kp gain: {ui._leftMotorKp.get():.2f}\r\n"

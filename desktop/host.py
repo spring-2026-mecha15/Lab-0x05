@@ -35,7 +35,25 @@ UI_prompt = """\r\n
 +---+-------------------------------------+\r\n\r"""
 
 def main():
-    """Desktop host CLI entry point (no MCU resource constraints; simple FSM)."""
+    """
+    Desktop host CLI entry point.
+
+    Auto-detects the Romi STLink device by USB VID/PID, prints a menu, and
+    dispatches to the appropriate test function based on user input.
+
+    FSM states:
+        S0_INIT       – print the menu, transition to S1_CMD.
+        S1_CMD        – read one command character from stdin:
+                            ``'s'`` → S2_STEP_TEST,
+                            ``'l'`` → S3_CIRCLE_LOG,
+                            ``'d'`` → S4_DEBUG_MODE (reserved).
+        S2_STEP_TEST  – call ``run_step_test()``, return to S0_INIT.
+        S3_CIRCLE_LOG – call ``run_circle_log_placeholder()``, return to S0_INIT.
+
+    Returns:
+        int: ``1`` if the Romi device is not found; ``None`` on normal exit
+             (Ctrl-C).
+    """
     try:
 
         # -------------------------

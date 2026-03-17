@@ -1,8 +1,36 @@
+"""
+Debug readout screen for the Romi robot UI.
+
+Displays a single-shot snapshot of key sensor and system values over the
+serial terminal whenever the debug option is selected from the main menu.
+Outputs three sections: reflectance sensor bar graph with centroid, battery
+voltage (corrected for the 4.7 kΩ / 10 kΩ voltage divider), and ultrasonic
+distance.
+"""
 from pyb import ADC
 from constants import BATT_ADC
 
 
 def run(ui):
+    """
+    Print one debug snapshot to the serial terminal.
+
+    Reads current values from the reflectance sensor array, the battery ADC,
+    and the ultrasonic distance sensor, then formats and writes them to the
+    serial port.  A single ``yield`` at the end makes this a generator so it
+    integrates cleanly with the cooperative scheduler in ``task_user``.
+
+    Args:
+        ui: UI context object exposing:
+            - ``_ser``: serial port for output.
+            - ``_reflectanceSensor``: sensor object whose ``get_values()``
+              returns ``(raw, calibrated, centroid, line_detected)``.
+            - ``_ultrasonicDistance``: share/queue whose ``get()`` returns
+              distance in cm.
+
+    Yields:
+        None: Once, after all output has been written.
+    """
     ui._ser.write("DEBUG\r\n")
 
     ############################################

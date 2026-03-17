@@ -1,4 +1,39 @@
+"""
+Reflectance sensor calibration screen for the Romi robot UI.
+
+Guides the user through a two-phase calibration that establishes white and
+black reference levels for the IR reflectance array:
+
+    **Phase 1 – Light surface**: robot placed on a white background.
+    **Phase 2 – Dark surface**:  robot placed on the black line.
+
+Communication with the reflectance sensor task uses a shared mode variable:
+    - ``2`` → trigger light-surface calibration
+    - ``1`` → trigger dark-surface calibration
+    - ``0`` ← sensor acknowledges completion (written back by sensor task)
+
+All blocking waits are cooperative (``yield 0``) so the scheduler remains
+responsive throughout.
+"""
+
+
 def run(ui):
+    """
+    Generator that runs the two-phase reflectance sensor calibration workflow.
+
+    First asks the user to confirm (``y``/``n``).  On confirmation it walks
+    through light then dark calibration, signalling the sensor task via
+    ``ui._reflectanceMode`` and waiting (with ``yield 0``) for each phase
+    to complete before proceeding.
+
+    Args:
+        ui: UI context object exposing ``_ser`` (serial port) and
+            ``_reflectanceMode`` (shared variable used to command and
+            synchronise with the reflectance sensor task).
+
+    Yields:
+        int: ``0`` on every poll and acknowledgement-wait iteration.
+    """
     ui._ser.write("CALIBRATION\r\n")
 
     # Double check this is the action the user wants to make

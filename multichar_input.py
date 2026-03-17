@@ -1,7 +1,38 @@
+"""
+Non-blocking multi-character numeric input handler for serial interfaces.
+
+Provides a generator-based input routine for reading floating-point numbers
+from a MicroPython serial port (USB_VCP or UART). Designed for use with the
+cooperative multitasking scheduler: the generator yields on every loop
+iteration so other tasks continue to run while waiting for user input.
+
+Supported input:
+    - Digits 0–9, optional leading ``-``, optional single ``.``
+    - Backspace / rubout (``0x7F``) to delete the last character
+    - Enter / Return (``\\r`` or ``\\n``) to submit
+"""
 from pyb import USB_VCP, UART
 from task_share import BaseShare, Share
 
-def multichar_input(ser, ):
+def multichar_input(ser):
+    """
+    Generator that reads a floating-point number from a serial port.
+
+    Accumulates characters one at a time, echoes valid input back to the
+    terminal, and returns the parsed value when the user presses Enter.
+    Yields ``None`` on every iteration to cooperate with the task scheduler.
+
+    Args:
+        ser: MicroPython serial object (``USB_VCP`` or ``UART``) that supports
+             ``any()``, ``read(n)``, and ``write(s)``.
+
+    Yields:
+        None: Relinquishes the CPU on every loop so other tasks can run.
+
+    Returns:
+        float: The value entered by the user when Enter is pressed.
+        None:  If the user presses Enter with an empty buffer (no change).
+    """
 
     # A serial port object to use for reading characters
     #ser: stream = USB_VCP()

@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
 """
-Host-side test runner for Romi experiments.
+Host-side test harness for Romi velocity-control and line-following experiments.
 
-- Auto-connects to a serial device matching DEFAULT_VID/PID
-- Iterates a list of velocity/gain configurations
-- Drives the Romi UI over serial (presses menu keys and types numeric values)
-- Waits for CSV output, saves CSV files in a timestamped subfolder under ./data
-- After all runs, calls `plot_csv(filenames)` to plot results
+Provides two top-level functions called by ``host.py``:
 
-Note: This runs on a host computer (CPython) and is not for MicroPython.
+``run_step_test``
+    Iterates over a list of :class:`VelocityConfig` objects, drives the Romi
+    serial UI to apply each set of gains and a wheel-speed setpoint, waits for
+    the robot to collect data, captures the resulting CSV stream, and saves each
+    run to a timestamped folder under ``./data/``.  After all runs it calls
+    ``plot_csv()`` to visualise the results.
+
+``run_circle_log_placeholder``
+    Triggers the robot's line-following mode, streams centroid-deviation
+    telemetry (converting timestamps from ms to s), and saves the result to
+    ``circle_log.csv``.  Handles Ctrl-C gracefully: sends ``\\x03`` / ``\\x04``
+    to stop the robot and plots whatever was captured.
+
+Serial protocol:
+    - Baudrate: 115 200 bps, 3-second warm-up after port open.
+    - CSV data delimited by ``CSV_BEGIN`` / ``CSV_END`` markers (from ``constants``).
+    - Small 50 ms delays between UI key-presses prevent MCU input buffer overrun.
+
+Note:
+    Runs on CPython only (requires ``pyserial``).  Not for MicroPython.
 """
 import sys
 import os
@@ -26,6 +41,14 @@ BAUDRATE = 115200
 
 # Small helper container for setpoint/gain configs
 class VelocityConfig:
+    """
+    Container for one velocity-control test configuration.
+
+    Attributes:
+        setpoint (float): Target wheel speed (encoder counts / sample period).
+        kp (float): Proportional gain for the motor velocity PI controller.
+        ki (float): Integral gain for the motor velocity PI controller.
+    """
     def __init__(self, setpoint, kp, ki):
         self.setpoint = setpoint
         self.kp = kp
@@ -73,6 +96,28 @@ def read_csv_data(ser: serial.Serial):
             break
 
 def run_step_test(com_port):
+    """
+    Run the automated step-response test suite.
+
+    Opens a serial connection to the Romi, then for each :class:`VelocityConfig`
+    in ``configs``:
+
+    1. Sends menu key ``'k'`` to open the gains screen and writes Kp / Ki values.
+    2. Sends menu key ``'s'`` to open the setpoint screen and writes the target speed.
+    3. Sends ``'g'`` to trigger data collection on the robot.
+    4. Waits for the robot to report ``"collection complete"``.
+    5. Waits for ``CSV_BEGIN``, streams CSV lines to a file, stops at ``CSV_END``.
+
+    Output files are saved under ``./data/<timestamp>/`` and named
+    ``P{kp}_I{ki}_S{setpoint}.csv``.  After all runs, calls ``plot_csv()``
+    with ``include_combined=True``.
+
+    Args:
+        com_port (str): Serial port path (e.g. ``'/dev/ttyACM0'``, ``'COM3'``).
+
+    Returns:
+        int: ``0`` on success, ``1`` on serial error or user cancellation.
+    """
     ser = None
     try:
         # -------------------------
@@ -201,6 +246,23 @@ def run_step_test(com_port):
                 pass
 
 def run_circle_log_placeholder(com_port):
+    """
+    Log centroid-deviation telemetry from one line-following run.
+
+    Sends ``'l'`` to the robot to start autonomous line-following, waits for
+    ``CSV_BEGIN``, then streams data to ``circle_log.csv``.  Each line is
+    expected to have the form ``<time_ms>,<centroid_deviation>``; the timestamp
+    is converted to seconds before writing.
+
+    On Ctrl-C: sends ``\\x03`` (Ctrl-C) and ``\\x04`` (Ctrl-D) to stop the
+    robot, plots whatever data was captured, and returns ``1``.
+
+    Args:
+        com_port (str): Serial port path (e.g. ``'/dev/ttyACM0'``, ``'COM3'``).
+
+    Returns:
+        int: ``0`` on success, ``1`` on serial error or user cancellation.
+    """
     ser = None
     try:
         # -------------------------
