@@ -21,3 +21,4 @@ test.csv
 .vscode/
 __pycache__/
 .DS_Store
+requirements.txt
