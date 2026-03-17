@@ -7,8 +7,6 @@ The robot runs nine concurrent tasks under a cooperative round-robin scheduler
 shared variables and queues ([`task_share`](api/generated/task_share.rst)),
 with no direct function calls between tasks.
 
-*[Insert your task diagram image here]*
-
 ```{image} _static/task_diagram.png
 :alt: Task diagram
 :width: 700px
