@@ -18,3 +18,6 @@ docs/source/api/generated/
 /micropython_sync_tools
 /docs/_build
 test.csv
+.vscode/
+__pycache__/
+.DS_Store
