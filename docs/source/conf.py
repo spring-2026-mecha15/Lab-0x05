@@ -7,9 +7,12 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.apidoc',
     'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
     'myst_parser',
     'sphinx_autodoc_typehints',
 ]
+
+myst_enable_extensions = ['dollarmath', 'amsmath']
 
 # Mock MicroPython-only imports so autodoc can run on a desktop
 autodoc_mock_imports = [

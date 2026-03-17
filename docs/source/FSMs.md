@@ -707,9 +707,7 @@ arc_distance = arc_angle × EFFECTIVE_RADIUS
 
 **Entry:** From S11
 
-**Minimum Distance:** Must travel ≥ 25 mm before checking for line loss (avoid immediate re-loss oscillation)
-
-**Behavior:** Line follow for 25 mm, then check for line loss
+**Behavior:** Line follow for at least 25 mm before checking for line loss (avoid immediate re-loss oscillation)
 
 **Exit Condition:** `segmentDistance ≥ 25 mm` AND `lineFound = False`
 
