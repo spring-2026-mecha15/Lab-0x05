@@ -11,7 +11,7 @@
 Roami is an autonomous differential-drive robot that navigates a competition course using closed-loop line following, IMU-assisted heading control, and ultrasonic obstacle detection. The robot runs entirely on an STM32 Nucleo microcontroller programmed in MicroPython, coordinating nine concurrent tasks through a cooperative scheduler. Across three competition runs, Roami completed the course consistently under 55.7 seconds with a run-to-run spread of only 0.2 seconds.
 
 Full documentation, hardware schematics, controller derivations, state machine diagrams, and competition results are available at the project website:
-**[https://spring-2026-mecha15.github.io/Lab-0x05/](https://spring-2026-mecha15.github.io/Lab-0x05/)**
+**[https://spring-2026-mecha15.github.io/Romi-Project/](https://spring-2026-mecha15.github.io/Romi-Project/)**
 
 ---
 
