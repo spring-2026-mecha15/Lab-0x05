@@ -10,11 +10,11 @@
 
 ## Overview
 
-Roami is an autonomous line-following robot built on the Pololu Romi chassis. It was built for a competition in the Cal Poly ME 405 class. It uses a 7-element IR reflectance array, a BNO055 IMU, quadrature encoders, and a model-based state observer to navigate a competition course reliably and at speed.
+Romi is an autonomous line-following robot built on the Pololu Romi chassis. It was built for a competition in the Cal Poly ME 405 class. It uses a 7-element IR reflectance array, a BNO055 IMU, quadrature encoders, and a model-based state observer to navigate a competition course reliably and at speed.
 
 ## Robot Photo
 
-```{image} _static/roami_closeup.png
+```{image} _static/romi_closeup.png
 :alt: Romi robot
 :width: 600px
 :align: center

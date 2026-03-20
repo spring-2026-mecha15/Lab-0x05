@@ -1,4 +1,4 @@
-# Roami
+# Romi
 
 **An autonomous line-following robot built on the Pololu Romi platform for ME 405 Mechatronics, Cal Poly SLO — Winter 2026.**
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Roami is an autonomous differential-drive robot that navigates a competition course using closed-loop line following, IMU-assisted heading control, and ultrasonic obstacle detection. The robot runs entirely on an STM32 Nucleo microcontroller programmed in MicroPython, coordinating nine concurrent tasks through a cooperative scheduler. Across three competition runs, Roami completed the course consistently under 55.7 seconds with a run-to-run spread of only 0.2 seconds.
+Romi is an autonomous differential-drive robot that navigates a competition course using closed-loop line following, IMU-assisted heading control, and ultrasonic obstacle detection. The robot runs entirely on an STM32 Nucleo microcontroller programmed in MicroPython, coordinating nine concurrent tasks through a cooperative scheduler. Across three competition runs, Romi completed the course consistently under 55.7 seconds with a run-to-run spread of only 0.2 seconds.
 
 Full documentation, hardware schematics, controller derivations, state machine diagrams, and competition results are available at the project website:
 **[https://spring-2026-mecha15.github.io/Romi-Project/](https://spring-2026-mecha15.github.io/Romi-Project/)**
@@ -40,7 +40,7 @@ Full documentation, hardware schematics, controller derivations, state machine d
 ## Repository Structure
 
 ```
-Roami/
+Romi/
 ├── drivers/
 │   ├── motor.py          # Motor driver (PWM + direction + battery compensation)
 │   ├── encoder.py        # Quadrature encoder reader

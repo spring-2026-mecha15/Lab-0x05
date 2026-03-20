@@ -98,7 +98,7 @@ def main():
                 state = S0_INIT
 
     except KeyboardInterrupt:
-        print("\nExiting Roami Desktop CLI.")
+        print("\nExiting Romi Desktop CLI.")
         return
 
 if __name__ == "__main__":
