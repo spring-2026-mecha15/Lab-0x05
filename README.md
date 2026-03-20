@@ -1,4 +1,4 @@
-# Roami
+# Romi
 
 **An autonomous line-following robot built on the Pololu Romi platform for ME 405 Mechatronics, Cal Poly SLO — Winter 2026.**
 
